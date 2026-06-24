@@ -1,13 +1,35 @@
-/* Journey stop cards — hover lift and keyboard focus ring */
+/* ─── Journey stop cards ───────────────────────────────────────────────────
+   Hover lift and keyboard focus ring — lives here so pseudo-selectors work. */
 .sf-stop {
   transition: transform .12s ease, box-shadow .12s ease;
 }
 .sf-stop:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(28, 34, 48, .08);
+  box-shadow: 0 6px 20px rgba(30, 27, 22, .10);
 }
 .sf-stop:focus-visible {
   outline: 2px solid #E8654E;
   outline-offset: 3px;
-  border-radius: 14px;
+  border-radius: 18px;
+}
+
+/* ─── Global focus ring ────────────────────────────────────────────────────
+   Every interactive element gets a visible coral ring — WCAG 2.4.11. */
+button:focus-visible {
+  outline: 2px solid #E8654E;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ─── Reduced motion ───────────────────────────────────────────────────────
+   Strip all transitions for users who prefer it. */
+@media (prefers-reduced-motion: reduce) {
+  .sf-stop,
+  .sf-stop:hover {
+    transition: none;
+    transform: none;
+  }
+  button {
+    transition: none !important;
+  }
 }

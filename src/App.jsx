@@ -36,18 +36,46 @@ const SCENARIOS = [
   },
 ];
 
-// ── Palette: calm, low-anxiety. Deep ink, warm paper, a single confident coral
-// for the live "you're being heard" state. Nothing clinical, nothing gamified.
-const C = {
-  ink: "#1C2230",
-  paper: "#FBF7F0",
-  card: "#FFFFFF",
-  coral: "#E8654E",
-  coralSoft: "#FBE3DC",
-  sage: "#5C7A6B",
-  sageSoft: "#E4ECE6",
-  line: "#E7E0D5",
-  muted: "#8A8578",
+// ── Design tokens ────────────────────────────────────────────────────────────
+// One source of truth for all three screens. Chime-inspired structure:
+// near-white base, pure-white surfaces, ONE accent used sparingly per screen,
+// clear type scale, very gentle depth. Not banking-green — warm terracotta.
+const T = {
+  // Color
+  bg:          "#FBF8F4",   // page background — warm off-white
+  surface:     "#FFFFFF",   // card / bubble surface
+  surfaceWarm: "#FDF9F5",   // recommended card tint — barely warm
+  text:        "#1E1B16",   // primary text — deep warm near-black (WCAG AA ✓)
+  textSub:     "#6B6560",   // secondary labels / captions
+  border:      "#EDE8E2",   // card borders and dividers
+
+  // Accent — coral/terracotta. ONE element per screen gets this. Chime discipline:
+  // do not flood the UI. In chat, only the mic ring while listening.
+  accent:     "#E8654E",
+  accentTint: "#FBE9E3",   // badge backgrounds, tint fills — very soft
+
+  // Support — muted sage. Reserved for encouragement / success moments only.
+  support:     "#5C7A6B",
+  supportTint: "#E8F0EB",
+
+  // Typography — warm humanist sans. Inter if available, system stack otherwise.
+  sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+
+  // Border-radius
+  card: 18,    // standard card and bubble radius
+  pill: 100,   // pill-shaped buttons
+
+  // Shadows — very subtle, Chime-style quiet depth
+  shadowCard: "0 1px 3px rgba(30,27,22,.05), 0 4px 12px rgba(30,27,22,.04)",
+  shadowMic:  "0 4px 16px rgba(30,27,22,.18)",
+};
+
+// Shared overline style — uppercase label used on all three screens
+const OL = {
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.12em",
+  textTransform: "uppercase",
 };
 
 export default function App() {
@@ -218,65 +246,63 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
     <div
       style={{
         minHeight: "100vh",
-        background: C.paper,
-        color: C.ink,
-        fontFamily:
-          "'Georgia', 'Iowan Old Style', serif",
+        background: T.bg,
+        color: T.text,
+        fontFamily: T.sans,
         display: "flex",
         justifyContent: "center",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 560, padding: "0 18px" }}>
+      <div style={{ width: "100%", maxWidth: 560, padding: "0 20px" }}>
+
         {/* ── HOME ───────────────────────────────── */}
         {screen === "home" && (
-          <div style={{ paddingTop: 56, paddingBottom: 64 }}>
-            <div
-              style={{
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                fontSize: 12,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: C.coral,
-                fontWeight: 700,
-              }}
-            >
-              Speak first
-            </div>
+          <div style={{ paddingTop: 60, paddingBottom: 80 }}>
+
+            {/* Overline */}
+            <div style={{ ...OL, color: T.accent }}>Speak first</div>
+
+            {/* Hero */}
             <h1
               style={{
-                fontSize: 40,
-                lineHeight: 1.05,
-                margin: "12px 0 14px",
-                fontWeight: 400,
-                letterSpacing: -0.5,
+                fontSize: 38,
+                lineHeight: 1.08,
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                margin: "14px 0 16px",
+                color: T.text,
               }}
             >
               Have a real conversation.
               <br />
               Get corrected after.
             </h1>
+
+            {/* Subhead */}
             <p
               style={{
-                fontSize: 17,
-                lineHeight: 1.5,
-                color: C.muted,
-                maxWidth: 420,
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                fontSize: 16,
+                lineHeight: 1.6,
+                color: T.textSub,
+                margin: 0,
+                maxWidth: 400,
               }}
             >
-              No interruptions, no red marks mid-sentence. Talk your way through
-              a real situation, then see the three things worth fixing.
+              No interruptions, no red marks mid-sentence. Talk your way
+              through a real situation, then see the three things worth fixing.
             </p>
 
+            {/* Browser warning */}
             {!supported && (
               <div
                 style={{
                   marginTop: 20,
-                  padding: "12px 14px",
-                  background: C.coralSoft,
-                  borderRadius: 10,
+                  padding: "14px 16px",
+                  background: T.accentTint,
+                  borderRadius: T.card,
                   fontSize: 14,
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                  lineHeight: 1.5,
+                  color: T.text,
                 }}
               >
                 Voice input needs Chrome on desktop or Android. You can still
@@ -284,19 +310,11 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </div>
             )}
 
-            {/* ── JOURNEY ARC ─────────────────────────── */}
-            <div style={{ marginTop: 48 }}>
-              <div
-                style={{
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                  fontSize: 11,
-                  letterSpacing: 3,
-                  textTransform: "uppercase",
-                  color: C.muted,
-                  fontWeight: 700,
-                  marginBottom: 36,
-                }}
-              >
+            {/* ── Journey arc ─────────────────────────── */}
+            <div style={{ marginTop: 52 }}>
+
+              {/* Section overline */}
+              <div style={{ ...OL, color: T.textSub, marginBottom: 32 }}>
                 Your journey
               </div>
 
@@ -304,9 +322,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 const journey = [...SCENARIOS].sort(
                   (a, b) => a.difficulty - b.difficulty
                 );
-                // Width of the column that holds the path dot.
-                // The vertical line is centered inside this column on desktop,
-                // and at a fixed 15px offset on mobile.
+                // DOT_COL: width of the column holding the path dot.
+                // Vertical line centers inside it on desktop; fixed 15px on mobile.
                 const DOT_COL = 32;
 
                 const makeDot = (s) => (
@@ -316,10 +333,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       width: s.recommended ? 18 : 13,
                       height: s.recommended ? 18 : 13,
                       borderRadius: "50%",
-                      background: s.recommended ? C.coral : C.ink,
-                      border: `2.5px solid ${C.paper}`,
+                      background: s.recommended ? T.accent : T.text,
+                      border: `2.5px solid ${T.bg}`,
                       boxShadow: `0 0 0 1.5px ${
-                        s.recommended ? C.coral : C.line
+                        s.recommended ? T.accent : T.border
                       }`,
                       flexShrink: 0,
                       position: "relative",
@@ -335,26 +352,24 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     style={{
                       width: "100%",
                       textAlign: "left",
-                      background: s.recommended ? "#FDF9F5" : C.card,
-                      border: `1.5px solid ${
-                        s.recommended ? C.coral : C.line
+                      background: s.recommended ? T.surfaceWarm : T.surface,
+                      border: `${s.recommended ? "1.5px" : "1px"} solid ${
+                        s.recommended ? T.accent : T.border
                       }`,
-                      borderRadius: 14,
-                      padding: "16px 18px",
+                      borderRadius: T.card,
+                      padding: "20px 22px",
                       cursor: "pointer",
                       fontFamily: "inherit",
+                      boxShadow: T.shadowCard,
                     }}
                   >
                     {s.recommended && (
                       <div
                         style={{
-                          fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                          fontSize: 11,
-                          letterSpacing: 1.5,
-                          textTransform: "uppercase",
-                          color: C.coral,
-                          fontWeight: 700,
-                          marginBottom: 9,
+                          ...OL,
+                          color: T.accent,
+                          letterSpacing: "0.10em",
+                          marginBottom: 10,
                         }}
                       >
                         ✦ Start here
@@ -362,10 +377,11 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     )}
                     <div
                       style={{
-                        fontSize: 18,
+                        fontSize: 17,
+                        fontWeight: 600,
                         lineHeight: 1.2,
                         marginBottom: 4,
-                        color: C.ink,
+                        color: T.text,
                       }}
                     >
                       {s.title}
@@ -373,9 +389,9 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     <div
                       style={{
                         fontSize: 13,
-                        color: C.muted,
-                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        marginBottom: 10,
+                        color: T.textSub,
+                        lineHeight: 1.4,
+                        marginBottom: 12,
                       }}
                     >
                       {s.sub}
@@ -383,19 +399,16 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     <span
                       style={{
                         display: "inline-block",
-                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        fontSize: 11,
-                        letterSpacing: 1,
-                        textTransform: "uppercase",
+                        ...OL,
+                        letterSpacing: "0.08em",
                         color:
-                          s.level === "Intermediate" ? C.coral : C.sage,
+                          s.level === "Intermediate" ? T.accent : T.support,
                         background:
                           s.level === "Intermediate"
-                            ? C.coralSoft
-                            : C.sageSoft,
-                        padding: "4px 8px",
-                        borderRadius: 20,
-                        fontWeight: 600,
+                            ? T.accentTint
+                            : T.supportTint,
+                        padding: "4px 9px",
+                        borderRadius: T.pill,
                       }}
                     >
                       {s.level}
@@ -417,8 +430,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                         width: 1,
                         background: `repeating-linear-gradient(
                           to bottom,
-                          ${C.line} 0px,
-                          ${C.line} 5px,
+                          ${T.border} 0px,
+                          ${T.border} 5px,
                           transparent 5px,
                           transparent 11px
                         )`,
@@ -427,10 +440,9 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
                     {journey.map((s, i) => {
                       const isLast = i === journey.length - 1;
-                      // Even index → card on left; odd → card on right
                       const cardLeft = i % 2 === 0;
 
-                      /* ── Mobile: single column, line on left ── */
+                      /* Mobile: single column, line on left */
                       if (isMobile) {
                         return (
                           <div
@@ -456,8 +468,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                         );
                       }
 
-                      /* ── Desktop: zigzag ── */
-                      // Gap between card edge and dot: DOT_COL/2 + 14px
+                      /* Desktop: zigzag */
                       const innerPad = DOT_COL / 2 + 14;
                       return (
                         <div
@@ -465,19 +476,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                           style={{ marginBottom: isLast ? 0 : 32 }}
                         >
                           <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                            }}
+                            style={{ display: "flex", alignItems: "center" }}
                           >
-                            {/* Left half */}
                             <div
                               style={{ flex: 1, paddingRight: innerPad }}
                             >
                               {cardLeft ? makeCard(s) : null}
                             </div>
-
-                            {/* Dot column — sits on the center line */}
                             <div
                               style={{
                                 width: DOT_COL,
@@ -489,8 +494,6 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                             >
                               {makeDot(s)}
                             </div>
-
-                            {/* Right half */}
                             <div
                               style={{ flex: 1, paddingLeft: innerPad }}
                             >
@@ -516,11 +519,12 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               flexDirection: "column",
             }}
           >
+            {/* Header */}
             <div
               style={{
-                paddingTop: 20,
-                paddingBottom: 14,
-                borderBottom: `1px solid ${C.line}`,
+                paddingTop: 24,
+                paddingBottom: 16,
+                borderBottom: `1px solid ${T.border}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -534,35 +538,37 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 style={{
                   background: "none",
                   border: "none",
-                  color: C.muted,
+                  color: T.textSub,
                   cursor: "pointer",
                   fontSize: 14,
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                  fontFamily: "inherit",
+                  padding: "4px 0",
                 }}
               >
                 ← Leave
               </button>
               <div
                 style={{
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                  fontSize: 14,
+                  fontSize: 15,
                   fontWeight: 600,
+                  color: T.text,
                 }}
               >
                 {scenario.title}
               </div>
+              {/* End & review — dark when active; accent is reserved for mic */}
               <button
                 onClick={endAndReview}
                 disabled={userTurns === 0}
                 style={{
-                  background: userTurns === 0 ? C.line : C.ink,
-                  color: userTurns === 0 ? C.muted : "#fff",
+                  background: userTurns === 0 ? T.border : T.text,
+                  color: userTurns === 0 ? T.textSub : "#fff",
                   border: "none",
-                  borderRadius: 20,
-                  padding: "7px 14px",
+                  borderRadius: T.pill,
+                  padding: "8px 16px",
                   cursor: userTurns === 0 ? "default" : "pointer",
                   fontSize: 13,
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                  fontFamily: "inherit",
                   fontWeight: 600,
                 }}
               >
@@ -570,9 +576,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </button>
             </div>
 
+            {/* Message list */}
             <div
               ref={scrollRef}
-              style={{ flex: 1, overflowY: "auto", padding: "20px 2px" }}
+              style={{ flex: 1, overflowY: "auto", padding: "24px 4px" }}
             >
               {messages.map((m, i) => (
                 <div
@@ -581,24 +588,29 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     display: "flex",
                     justifyContent:
                       m.role === "user" ? "flex-end" : "flex-start",
-                    marginBottom: 12,
+                    marginBottom: 14,
                   }}
                 >
                   <div
                     onClick={() => m.role === "tutor" && speak(m.text)}
                     style={{
                       maxWidth: "78%",
-                      padding: "12px 16px",
-                      borderRadius: 16,
-                      fontSize: 17,
-                      lineHeight: 1.4,
+                      padding: "13px 17px",
+                      borderRadius: T.card,
+                      fontSize: 16,
+                      lineHeight: 1.45,
                       cursor: m.role === "tutor" ? "pointer" : "default",
-                      background: m.role === "user" ? C.ink : C.card,
-                      color: m.role === "user" ? "#fff" : C.ink,
+                      background: m.role === "user" ? T.text : T.surface,
+                      color: m.role === "user" ? "#fff" : T.text,
                       border:
-                        m.role === "tutor" ? `1px solid ${C.line}` : "none",
-                      borderBottomRightRadius: m.role === "user" ? 4 : 16,
-                      borderBottomLeftRadius: m.role === "tutor" ? 4 : 16,
+                        m.role === "tutor"
+                          ? `1px solid ${T.border}`
+                          : "none",
+                      boxShadow:
+                        m.role === "tutor" ? T.shadowCard : "none",
+                      borderBottomRightRadius: m.role === "user" ? 4 : T.card,
+                      borderBottomLeftRadius:
+                        m.role === "tutor" ? 4 : T.card,
                     }}
                   >
                     {m.text}
@@ -606,8 +618,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       <span
                         style={{
                           marginLeft: 8,
-                          fontSize: 12,
-                          color: C.muted,
+                          fontSize: 11,
+                          color: T.textSub,
                         }}
                       >
                         ⏵
@@ -617,51 +629,59 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 </div>
               ))}
               {thinking && (
-                <div style={{ color: C.muted, fontSize: 15, padding: "4px 4px" }}>
+                <div
+                  style={{
+                    color: T.textSub,
+                    fontSize: 16,
+                    padding: "4px 4px",
+                  }}
+                >
                   …
                 </div>
               )}
             </div>
 
+            {/* Mic control — the ONE accent element on this screen */}
             <div
               style={{
-                padding: "16px 0 28px",
+                paddingTop: 20,
+                paddingBottom: 36,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 10,
+                gap: 12,
               }}
             >
               <button
                 onClick={toggleListen}
                 disabled={!supported || thinking}
                 style={{
-                  width: 78,
-                  height: 78,
+                  width: 76,
+                  height: 76,
                   borderRadius: "50%",
                   border: "none",
                   cursor: supported && !thinking ? "pointer" : "default",
-                  background: listening ? C.coral : C.ink,
+                  background: listening
+                    ? T.accent
+                    : !supported || thinking
+                    ? T.border
+                    : T.text,
                   color: "#fff",
                   fontSize: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   boxShadow: listening
-                    ? `0 0 0 10px ${C.coralSoft}`
-                    : "0 6px 18px rgba(28,34,48,.18)",
-                  transition: "all .2s ease",
+                    ? `0 0 0 10px ${T.accentTint}`
+                    : !supported || thinking
+                    ? "none"
+                    : T.shadowMic,
+                  transition: "background .2s ease, box-shadow .2s ease",
                 }}
               >
                 {listening ? "■" : "🎙"}
               </button>
-              <span
-                style={{
-                  fontSize: 13,
-                  color: C.muted,
-                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                }}
-              >
+              <span style={{ fontSize: 13, color: T.textSub }}>
                 {listening
                   ? "Listening… tap to stop"
                   : thinking
@@ -674,80 +694,75 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── FEEDBACK ───────────────────────────── */}
         {screen === "feedback" && (
-          <div style={{ paddingTop: 48, paddingBottom: 40 }}>
-            <div
-              style={{
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                fontSize: 12,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: C.sage,
-                fontWeight: 700,
-              }}
-            >
-              Your review
-            </div>
+          <div style={{ paddingTop: 52, paddingBottom: 60 }}>
+
+            {/* Overline */}
+            <div style={{ ...OL, color: T.support }}>Your review</div>
+
+            {/* Scenario title */}
             <h2
               style={{
-                fontSize: 30,
-                fontWeight: 400,
-                margin: "10px 0 22px",
+                fontSize: 28,
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                margin: "10px 0 28px",
+                color: T.text,
               }}
             >
               {scenario.title}
             </h2>
 
             {feedbackLoading && (
-              <p style={{ color: C.muted }}>Reading back your conversation…</p>
+              <p style={{ color: T.textSub, fontSize: 16 }}>
+                Reading back your conversation…
+              </p>
             )}
 
             {feedback && (
               <>
+                {/* Encouragement — sage support color, only positive moment */}
                 <div
                   style={{
-                    background: C.sageSoft,
-                    borderRadius: 14,
-                    padding: "16px 18px",
-                    fontSize: 17,
-                    lineHeight: 1.45,
-                    marginBottom: 26,
+                    background: T.supportTint,
+                    border: "1px solid rgba(92,122,107,.18)",
+                    borderRadius: T.card,
+                    padding: "20px 22px",
+                    fontSize: 16,
+                    lineHeight: 1.55,
+                    color: T.text,
+                    marginBottom: 28,
                   }}
                 >
                   {feedback.encouragement}
                 </div>
 
+                {/* Section label */}
                 {feedback.fixes && feedback.fixes.length > 0 && (
                   <div
-                    style={{
-                      fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                      fontSize: 12,
-                      letterSpacing: 2,
-                      textTransform: "uppercase",
-                      color: C.muted,
-                      marginBottom: 12,
-                      fontWeight: 700,
-                    }}
+                    style={{ ...OL, color: T.textSub, marginBottom: 14 }}
                   >
                     Worth fixing
                   </div>
                 )}
 
+                {/* Fix cards */}
                 {feedback.fixes &&
                   feedback.fixes.map((f, i) => (
                     <div
                       key={i}
                       style={{
-                        border: `1px solid ${C.line}`,
-                        borderRadius: 14,
-                        padding: "16px 18px",
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.card,
+                        padding: "20px 22px",
                         marginBottom: 12,
-                        background: C.card,
+                        boxShadow: T.shadowCard,
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 16,
-                          color: C.muted,
+                          fontSize: 15,
+                          color: T.textSub,
                           textDecoration: "line-through",
                           marginBottom: 4,
                         }}
@@ -757,9 +772,9 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       <div
                         style={{
                           fontSize: 18,
-                          color: C.coral,
-                          marginBottom: 8,
                           fontWeight: 600,
+                          color: T.accent,
+                          marginBottom: 8,
                         }}
                       >
                         {f.better}
@@ -767,9 +782,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       <div
                         style={{
                           fontSize: 14,
-                          lineHeight: 1.4,
-                          color: C.ink,
-                          fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                          lineHeight: 1.5,
+                          color: T.text,
                         }}
                       >
                         {f.why}
@@ -777,48 +791,56 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     </div>
                   ))}
 
+                {/* "Try this next time" phrase card */}
                 {feedback.phrase && (
                   <div
                     style={{
-                      marginTop: 20,
-                      padding: "16px 18px",
-                      background: C.ink,
-                      color: "#fff",
-                      borderRadius: 14,
+                      marginTop: 24,
+                      padding: "20px 22px",
+                      background: T.text,
+                      borderRadius: T.card,
                     }}
                   >
                     <div
                       style={{
-                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                        fontSize: 11,
-                        letterSpacing: 2,
-                        textTransform: "uppercase",
-                        opacity: 0.6,
-                        marginBottom: 6,
+                        ...OL,
+                        color: "#fff",
+                        opacity: 0.55,
+                        marginBottom: 8,
                       }}
                     >
                       Try this next time
                     </div>
-                    <div style={{ fontSize: 19 }}>{feedback.phrase}</div>
+                    <div
+                      style={{
+                        fontSize: 19,
+                        lineHeight: 1.35,
+                        color: "#fff",
+                      }}
+                    >
+                      {feedback.phrase}
+                    </div>
                   </div>
                 )}
               </>
             )}
 
+            {/* Primary CTA — the ONE accent element on this screen */}
             <button
               onClick={() => setScreen("home")}
               style={{
-                marginTop: 30,
+                marginTop: 36,
                 width: "100%",
-                background: C.coral,
+                background: T.accent,
                 color: "#fff",
                 border: "none",
-                borderRadius: 24,
-                padding: "15px",
+                borderRadius: T.pill,
+                padding: "17px 24px",
                 fontSize: 16,
+                fontWeight: 700,
+                fontFamily: "inherit",
                 cursor: "pointer",
-                fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                fontWeight: 600,
+                transition: "opacity .15s ease",
               }}
             >
               Practice again
