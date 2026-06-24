@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import "./App.css";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -10,6 +11,8 @@ const SCENARIOS = [
       "You are Marta, a warm but busy barista at a café in Madrid. You only speak Spanish. Greet the customer and take their order naturally.",
     opener: "¡Hola! Buenos días. ¿Qué te pongo?",
     level: "Beginner",
+    difficulty: 1,
+    recommended: true,
   },
   {
     id: "interview",
@@ -19,6 +22,7 @@ const SCENARIOS = [
       "You are Diego, a friendly hiring manager interviewing a candidate for a junior marketing role in Bogotá. You only speak Spanish. Ask normal interview questions, one at a time.",
     opener: "Buenas. Gracias por venir. Cuéntame un poco sobre ti.",
     level: "Intermediate",
+    difficulty: 3,
   },
   {
     id: "friend",
@@ -28,6 +32,7 @@ const SCENARIOS = [
       "You are Lucía, an old friend catching up over coffee. You only speak Spanish. Be casual, curious, and chatty about each other's week.",
     opener: "¡Ey! Cuánto tiempo. ¿Qué tal todo?",
     level: "Beginner",
+    difficulty: 2,
   },
 ];
 
@@ -54,6 +59,7 @@ export default function App() {
   const [feedback, setFeedback] = useState(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [supported, setSupported] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 500);
 
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
@@ -68,6 +74,12 @@ export default function App() {
     if (scrollRef.current)
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, thinking]);
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 500);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   function speak(text) {
     if (!window.speechSynthesis) return;
@@ -217,7 +229,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
       <div style={{ width: "100%", maxWidth: 560, padding: "0 18px" }}>
         {/* ── HOME ───────────────────────────────── */}
         {screen === "home" && (
-          <div style={{ paddingTop: 56, paddingBottom: 40 }}>
+          <div style={{ paddingTop: 56, paddingBottom: 64 }}>
             <div
               style={{
                 fontFamily: "'Helvetica Neue', Arial, sans-serif",
@@ -272,66 +284,225 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </div>
             )}
 
-            <div style={{ marginTop: 34 }}>
-              {SCENARIOS.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => startScenario(s)}
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    background: C.card,
-                    border: `1px solid ${C.line}`,
-                    borderRadius: 14,
-                    padding: "18px 20px",
-                    marginBottom: 12,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    transition: "transform .12s ease, box-shadow .12s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 24px rgba(28,34,48,.08)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "none";
-                    e.currentTarget.style.boxShadow = "none";
-                  }}
-                >
-                  <span>
-                    <span style={{ fontSize: 20, display: "block" }}>
+            {/* ── JOURNEY ARC ─────────────────────────── */}
+            <div style={{ marginTop: 48 }}>
+              <div
+                style={{
+                  fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                  fontSize: 11,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                  color: C.muted,
+                  fontWeight: 700,
+                  marginBottom: 36,
+                }}
+              >
+                Your journey
+              </div>
+
+              {(() => {
+                const journey = [...SCENARIOS].sort(
+                  (a, b) => a.difficulty - b.difficulty
+                );
+                // Width of the column that holds the path dot.
+                // The vertical line is centered inside this column on desktop,
+                // and at a fixed 15px offset on mobile.
+                const DOT_COL = 32;
+
+                const makeDot = (s) => (
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      width: s.recommended ? 18 : 13,
+                      height: s.recommended ? 18 : 13,
+                      borderRadius: "50%",
+                      background: s.recommended ? C.coral : C.ink,
+                      border: `2.5px solid ${C.paper}`,
+                      boxShadow: `0 0 0 1.5px ${
+                        s.recommended ? C.coral : C.line
+                      }`,
+                      flexShrink: 0,
+                      position: "relative",
+                      zIndex: 1,
+                    }}
+                  />
+                );
+
+                const makeCard = (s) => (
+                  <button
+                    className="sf-stop"
+                    onClick={() => startScenario(s)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: s.recommended ? "#FDF9F5" : C.card,
+                      border: `1.5px solid ${
+                        s.recommended ? C.coral : C.line
+                      }`,
+                      borderRadius: 14,
+                      padding: "16px 18px",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {s.recommended && (
+                      <div
+                        style={{
+                          fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          textTransform: "uppercase",
+                          color: C.coral,
+                          fontWeight: 700,
+                          marginBottom: 9,
+                        }}
+                      >
+                        ✦ Start here
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        fontSize: 18,
+                        lineHeight: 1.2,
+                        marginBottom: 4,
+                        color: C.ink,
+                      }}
+                    >
                       {s.title}
-                    </span>
-                    <span
+                    </div>
+                    <div
                       style={{
                         fontSize: 13,
                         color: C.muted,
                         fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                        marginBottom: 10,
                       }}
                     >
                       {s.sub}
+                    </div>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        fontFamily: "'Helvetica Neue', Arial, sans-serif",
+                        fontSize: 11,
+                        letterSpacing: 1,
+                        textTransform: "uppercase",
+                        color:
+                          s.level === "Intermediate" ? C.coral : C.sage,
+                        background:
+                          s.level === "Intermediate"
+                            ? C.coralSoft
+                            : C.sageSoft,
+                        padding: "4px 8px",
+                        borderRadius: 20,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {s.level}
                     </span>
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "'Helvetica Neue', Arial, sans-serif",
-                      fontSize: 11,
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                      color: C.sage,
-                      background: C.sageSoft,
-                      padding: "5px 9px",
-                      borderRadius: 20,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {s.level}
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+
+                return (
+                  <div style={{ position: "relative" }}>
+                    {/* Vertical dashed path line */}
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        position: "absolute",
+                        left: isMobile ? 15 : "50%",
+                        transform: isMobile ? "none" : "translateX(-50%)",
+                        top: 8,
+                        bottom: 8,
+                        width: 1,
+                        background: `repeating-linear-gradient(
+                          to bottom,
+                          ${C.line} 0px,
+                          ${C.line} 5px,
+                          transparent 5px,
+                          transparent 11px
+                        )`,
+                      }}
+                    />
+
+                    {journey.map((s, i) => {
+                      const isLast = i === journey.length - 1;
+                      // Even index → card on left; odd → card on right
+                      const cardLeft = i % 2 === 0;
+
+                      /* ── Mobile: single column, line on left ── */
+                      if (isMobile) {
+                        return (
+                          <div
+                            key={s.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              marginBottom: isLast ? 0 : 20,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: DOT_COL,
+                                flexShrink: 0,
+                                display: "flex",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {makeDot(s)}
+                            </div>
+                            <div style={{ flex: 1 }}>{makeCard(s)}</div>
+                          </div>
+                        );
+                      }
+
+                      /* ── Desktop: zigzag ── */
+                      // Gap between card edge and dot: DOT_COL/2 + 14px
+                      const innerPad = DOT_COL / 2 + 14;
+                      return (
+                        <div
+                          key={s.id}
+                          style={{ marginBottom: isLast ? 0 : 32 }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                          >
+                            {/* Left half */}
+                            <div
+                              style={{ flex: 1, paddingRight: innerPad }}
+                            >
+                              {cardLeft ? makeCard(s) : null}
+                            </div>
+
+                            {/* Dot column — sits on the center line */}
+                            <div
+                              style={{
+                                width: DOT_COL,
+                                flexShrink: 0,
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
+                              {makeDot(s)}
+                            </div>
+
+                            {/* Right half */}
+                            <div
+                              style={{ flex: 1, paddingLeft: innerPad }}
+                            >
+                              {!cardLeft ? makeCard(s) : null}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
