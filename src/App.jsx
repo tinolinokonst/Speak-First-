@@ -2,12 +2,17 @@ import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import {
   ArrowLeft,
+  BookOpen,
+  Check,
+  ChevronRight,
   Languages,
   Lightbulb,
+  MapPin,
   Mic,
   Square,
   Star,
   Volume2,
+  X,
 } from "lucide-react";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
@@ -88,7 +93,7 @@ const OL = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("home"); // home | chat | feedback
+  const [screen, setScreen] = useState("landing"); // landing | home | chat | feedback
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -401,12 +406,324 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
     >
       <div style={{ width: "100%", maxWidth: 560, padding: "0 20px" }}>
 
+        {/* ── LANDING ─────────────────────────────── */}
+        {screen === "landing" && (
+          <div style={{ paddingTop: 64, paddingBottom: 88 }}>
+
+            {/* Wordmark */}
+            <div style={{ ...OL, color: T.accent, marginBottom: 28 }}>
+              Speak First
+            </div>
+
+            {/* Hero headline */}
+            <h1
+              style={{
+                fontSize: isMobile ? 36 : 44,
+                lineHeight: 1.07,
+                fontWeight: 700,
+                letterSpacing: "-0.025em",
+                margin: "0 0 20px",
+                color: T.text,
+              }}
+            >
+              Speak.<br />
+              Make mistakes.<br />
+              Get better.
+            </h1>
+
+            {/* Subhead */}
+            <p
+              style={{
+                fontSize: 17,
+                lineHeight: 1.65,
+                color: T.textSub,
+                margin: "0 0 36px",
+                maxWidth: 400,
+              }}
+            >
+              Your AI conversation partner never interrupts or corrects you
+              mid-sentence. Say whatever Spanish you can — then see the three
+              things most worth fixing.
+            </p>
+
+            {/* Primary CTA */}
+            <button
+              onClick={() => setScreen("home")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                background: T.accent,
+                color: "#fff",
+                border: "none",
+                borderRadius: T.pill,
+                padding: "16px 28px",
+                fontSize: 16,
+                fontWeight: 700,
+                fontFamily: "inherit",
+                cursor: "pointer",
+                transition: "opacity .15s ease",
+              }}
+            >
+              Start practicing
+              <ChevronRight size={18} />
+            </button>
+
+            {/* ── Why Speak First? ──────────────────────── */}
+            <div style={{ marginTop: 72 }}>
+              <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
+                Why Speak First?
+              </div>
+
+              {/* Contrast card */}
+              <div
+                style={{
+                  background: T.surface,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: T.card,
+                  boxShadow: T.shadowCard,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Column headers */}
+                <div
+                  style={{
+                    display: "flex",
+                    background: T.bg,
+                    borderBottom: `1px solid ${T.border}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: "11px 16px",
+                      ...OL,
+                      color: T.textSub,
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Other apps
+                  </div>
+                  <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
+                  <div
+                    style={{
+                      flex: 1,
+                      padding: "11px 16px",
+                      ...OL,
+                      color: T.text,
+                      letterSpacing: "0.08em",
+                    }}
+                  >
+                    Speak First
+                  </div>
+                </div>
+
+                {/* Comparison rows */}
+                {[
+                  ["Drills and tap exercises", "Real spoken conversations"],
+                  ["Corrects you mid-sentence", "Never interrupts you"],
+                  ["You tap, not talk", "You speak the whole time"],
+                  ["Scores and streaks", "3 fixes worth knowing"],
+                ].map(([left, right], idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: "flex",
+                      borderTop: `1px solid ${T.border}`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: "13px 16px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 7,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        color: T.textSub,
+                      }}
+                    >
+                      <X size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+                      {left}
+                    </div>
+                    <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: "13px 16px",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 7,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        color: T.text,
+                      }}
+                    >
+                      <Check
+                        size={12}
+                        color={T.support}
+                        style={{ marginTop: 2, flexShrink: 0 }}
+                      />
+                      {right}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── How it works ──────────────────────────── */}
+            <div style={{ marginTop: 64 }}>
+              <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
+                How it works
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {[
+                  {
+                    icon: <MapPin size={20} color={T.accent} />,
+                    tileBg: T.accentTint,
+                    title: "Pick a real situation",
+                    body: "Choose from real scenarios — order at a café, catch up with a friend, or practise for a job interview.",
+                  },
+                  {
+                    icon: <Mic size={20} color={T.accent} />,
+                    tileBg: T.accentTint,
+                    title: "Have the conversation out loud",
+                    body: "The AI partner speaks Spanish. You reply with whatever you've got. No corrections, no interruptions.",
+                  },
+                  {
+                    icon: <BookOpen size={20} color={T.support} />,
+                    tileBg: T.supportTint,
+                    title: "Get your end-of-session coaching",
+                    body: "After you finish, see the 3 most important things to fix — focused feedback, not a list of every mistake.",
+                  },
+                ].map(({ icon, tileBg, title, body }, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: T.surface,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: T.card,
+                      padding: "18px 20px",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 16,
+                      boxShadow: T.shadowCard,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 12,
+                        background: tileBg,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {icon}
+                    </div>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 600,
+                          color: T.text,
+                          marginBottom: 4,
+                          lineHeight: 1.3,
+                        }}
+                      >
+                        {title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 1.55,
+                          color: T.textSub,
+                        }}
+                      >
+                        {body}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Reassurance ───────────────────────────── */}
+            <div
+              style={{
+                marginTop: 40,
+                background: T.surfaceWarm,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.card,
+                padding: "22px 24px",
+                fontSize: 15,
+                lineHeight: 1.65,
+                color: T.text,
+              }}
+            >
+              Speaking a new language feels exposed. This is a low-pressure
+              space to practise — the AI partner understands even broken
+              Spanish, and you'll never be judged or corrected mid-sentence.
+            </div>
+
+            {/* ── Bottom CTA ────────────────────────────── */}
+            <div
+              style={{
+                marginTop: 56,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={() => setScreen("home")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  background: T.accent,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: T.pill,
+                  padding: "16px 28px",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  transition: "opacity .15s ease",
+                }}
+              >
+                Start practicing
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── HOME ───────────────────────────────── */}
         {screen === "home" && (
           <div style={{ paddingTop: 60, paddingBottom: 80 }}>
 
-            {/* Overline */}
-            <div style={{ ...OL, color: T.accent }}>Speak first</div>
+            {/* Wordmark — tap to go back to landing */}
+            <button
+              onClick={() => setScreen("landing")}
+              style={{
+                ...OL,
+                color: T.accent,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                fontFamily: "inherit",
+                letterSpacing: "0.12em",
+              }}
+            >
+              Speak first
+            </button>
 
             {/* Hero */}
             <h1
