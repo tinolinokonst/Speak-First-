@@ -25,18 +25,28 @@ const SCENARIOS = [
     persona:
       "You are Marta, a warm but busy barista at a café in Madrid. You only speak Spanish. Greet the customer and take their order naturally.",
     opener: "¡Hola! Buenos días. ¿Qué te pongo?",
-    level: "Beginner",
+    level: "A1",
     difficulty: 1,
     recommended: true,
   },
   {
-    id: "interview",
-    title: "Job interview",
-    sub: "Marketing role, Bogotá",
+    id: "groceries",
+    title: "Buying groceries",
+    sub: "Local market, Spain",
     persona:
-      "You are Diego, a friendly hiring manager interviewing a candidate for a junior marketing role in Bogotá. You only speak Spanish. Ask normal interview questions, one at a time.",
-    opener: "Buenas. Gracias por venir. Cuéntame un poco sobre ti.",
-    level: "Intermediate",
+      "You are Carmen, a friendly vendor at a small neighborhood grocery store in Spain. You only speak Spanish. Help the customer find items, weigh produce, and total up their purchase. Keep it simple and warm.",
+    opener: "¡Hola! ¿Qué necesitas hoy?",
+    level: "A1",
+    difficulty: 2,
+  },
+  {
+    id: "directions",
+    title: "Asking for directions",
+    sub: "Street corner, Seville",
+    persona:
+      "You are Pablo, a relaxed local on the street in Seville. You only speak Spanish. A tourist stops you to ask how to get somewhere. Give simple directions and be patient and encouraging.",
+    opener: "¿Sí? ¿En qué te puedo ayudar?",
+    level: "A2",
     difficulty: 3,
   },
   {
@@ -46,10 +56,47 @@ const SCENARIOS = [
     persona:
       "You are Lucía, an old friend catching up over coffee. You only speak Spanish. Be casual, curious, and chatty about each other's week.",
     opener: "¡Ey! Cuánto tiempo. ¿Qué tal todo?",
-    level: "Beginner",
-    difficulty: 2,
+    level: "A2",
+    difficulty: 4,
+  },
+  {
+    id: "doctor",
+    title: "Doctor's appointment",
+    sub: "Clinic, Mexico City",
+    persona:
+      "You are Dr. Ramírez, a kind general doctor in a clinic in Mexico City. You only speak Spanish. The patient has come in not feeling well. Ask about their symptoms, how long they've felt this way, and reassure them. Stay calm and professional.",
+    opener: "Buenos días, pase y siéntese. Cuénteme, ¿qué le pasa?",
+    level: "B1",
+    difficulty: 5,
+  },
+  {
+    id: "interview",
+    title: "Job interview",
+    sub: "Marketing role, Bogotá",
+    persona:
+      "You are Diego, a friendly hiring manager interviewing a candidate for a junior marketing role in Bogotá. You only speak Spanish. Ask normal interview questions, one at a time.",
+    opener: "Buenas. Gracias por venir. Cuéntame un poco sobre ti.",
+    level: "B1",
+    difficulty: 6,
+  },
+  {
+    id: "debate",
+    title: "Disagreeing in a debate",
+    sub: "Coffee debate, anywhere",
+    persona:
+      "You are Elena, a sharp but respectful friend who loves a good debate over coffee. You only speak Spanish. Engage the learner in a friendly disagreement about an everyday topic (e.g. city vs country living, technology, food). Push back on their points to make them defend their view, but stay warm and never hostile.",
+    opener: "Vale, te lo discuto: creo que vivir en la ciudad es mucho mejor que en el campo. ¿No estás de acuerdo?",
+    level: "C1",
+    difficulty: 7,
   },
 ];
+
+// Human-readable hints paired with each CEFR code
+const CEFR_HINT = {
+  A1: "Beginner", A2: "Elementary",
+  B1: "Intermediate", B2: "Upper-intermediate",
+  C1: "Advanced", C2: "Mastery",
+};
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 // One source of truth for all three screens. Chime-inspired structure:
@@ -895,17 +942,21 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                         display: "inline-block",
                         ...OL,
                         letterSpacing: "0.08em",
-                        color:
-                          s.level === "Intermediate" ? T.accent : T.support,
-                        background:
-                          s.level === "Intermediate"
-                            ? T.accentTint
-                            : T.supportTint,
+                        color: s.level.startsWith("A")
+                          ? T.support
+                          : s.level.startsWith("B")
+                          ? T.accent
+                          : T.text,
+                        background: s.level.startsWith("A")
+                          ? T.supportTint
+                          : s.level.startsWith("B")
+                          ? T.accentTint
+                          : T.border,
                         padding: "4px 9px",
                         borderRadius: T.pill,
                       }}
                     >
-                      {s.level}
+                      {s.level} · {CEFR_HINT[s.level]}
                     </span>
                   </button>
                 );
