@@ -9,6 +9,7 @@ import {
   Lightbulb,
   MapPin,
   Mic,
+  RotateCcw,
   Square,
   Star,
   Volume2,
@@ -131,13 +132,33 @@ export default function App() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // Hardened Web Speech API wrapper.
+  // Fixes: (1) voices load async — wait for voiceschanged before speaking;
+  //        (2) engine stall on backgrounded tabs — resume() if paused;
+  //        (3) missing Spanish voice — fall back to system default rather than fail silently.
   function speak(text) {
     if (!window.speechSynthesis) return;
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "es-ES";
-    u.rate = 0.95;
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(u);
+    const synth = window.speechSynthesis;
+    synth.cancel(); // clear any in-progress utterance to prevent overlap / cutoff
+    if (synth.paused) synth.resume(); // un-stall if tab was backgrounded
+
+    const doSpeak = () => {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "es-ES";
+      u.rate = 0.95;
+      // Prefer an explicit Spanish voice; fall back to system default gracefully.
+      const voices = synth.getVoices();
+      const spanish = voices.find((v) => v.lang.startsWith("es"));
+      if (spanish) u.voice = spanish;
+      synth.speak(u);
+    };
+
+    // Voice list is often empty on first call in Chrome — defer until ready.
+    if (synth.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      synth.addEventListener("voiceschanged", doSpeak, { once: true });
+    }
   }
 
   function startScenario(s) {
@@ -409,6 +430,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
         {/* ── LANDING ─────────────────────────────── */}
         {screen === "landing" && (
           <div style={{ paddingTop: 64, paddingBottom: 88 }}>
+            <div className="sf-fade-up">
 
             {/* Wordmark */}
             <div style={{ ...OL, color: T.accent, marginBottom: 28 }}>
@@ -468,9 +490,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               Start practicing
               <ChevronRight size={18} />
             </button>
+            </div>
 
             {/* ── Why Speak First? ──────────────────────── */}
-            <div style={{ marginTop: 72 }}>
+            <div className="sf-fade-up" style={{ marginTop: 72, animationDelay: ".1s" }}>
               <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
                 Why Speak First?
               </div>
@@ -573,7 +596,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             </div>
 
             {/* ── How it works ──────────────────────────── */}
-            <div style={{ marginTop: 64 }}>
+            <div className="sf-fade-up" style={{ marginTop: 64, animationDelay: ".18s" }}>
               <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
                 How it works
               </div>
@@ -655,8 +678,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
             {/* ── Reassurance ───────────────────────────── */}
             <div
+              className="sf-fade-up"
               style={{
                 marginTop: 40,
+                animationDelay: ".25s",
                 background: T.surfaceWarm,
                 border: `1px solid ${T.border}`,
                 borderRadius: T.card,
@@ -673,8 +698,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
             {/* ── Bottom CTA ────────────────────────────── */}
             <div
+              className="sf-fade-up"
               style={{
                 marginTop: 56,
+                animationDelay: ".32s",
                 display: "flex",
                 justifyContent: "center",
               }}
@@ -706,7 +733,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── HOME ───────────────────────────────── */}
         {screen === "home" && (
-          <div style={{ paddingTop: 60, paddingBottom: 80 }}>
+          <div className="sf-screen" style={{ paddingTop: 60, paddingBottom: 80 }}>
 
             {/* Wordmark — tap to go back to landing */}
             <button
@@ -980,6 +1007,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
         {/* ── CHAT ───────────────────────────────── */}
         {screen === "chat" && scenario && (
           <div
+            className="sf-screen"
             style={{
               height: "100vh",
               display: "flex",
@@ -1149,6 +1177,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       {/* Word meaning panel */}
                       {wordKey && (
                         <div
+                          className="sf-reveal"
                           style={{
                             marginTop: 10,
                             paddingTop: 10,
@@ -1219,6 +1248,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       </button>
                       {xlShown && xlation && (
                         <div
+                          className="sf-reveal"
                           style={{
                             marginTop: 6,
                             fontSize: 14,
@@ -1279,6 +1309,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   >
                     {showHint && (
                       <div
+                        className="sf-reveal"
                         style={{
                           width: "100%",
                           background: T.surface,
@@ -1341,6 +1372,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               <button
                 onClick={toggleListen}
                 disabled={!supported || thinking}
+                className={listening ? "sf-mic--listening" : ""}
                 style={{
                   width: 76,
                   height: 76,
@@ -1357,7 +1389,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   alignItems: "center",
                   justifyContent: "center",
                   boxShadow: listening
-                    ? `0 0 0 10px ${T.accentTint}`
+                    ? undefined
                     : !supported || thinking
                     ? "none"
                     : T.shadowMic,
@@ -1384,7 +1416,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── FEEDBACK ───────────────────────────── */}
         {screen === "feedback" && (
-          <div style={{ paddingTop: 52, paddingBottom: 60 }}>
+          <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 60 }}>
 
             {/* Overline */}
             <div style={{ ...OL, color: T.support }}>Your review</div>
@@ -1515,26 +1547,54 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </>
             )}
 
-            {/* Primary CTA — the ONE accent element on this screen */}
-            <button
-              onClick={() => setScreen("home")}
-              style={{
-                marginTop: 36,
-                width: "100%",
-                background: T.accent,
-                color: "#fff",
-                border: "none",
-                borderRadius: T.pill,
-                padding: "17px 24px",
-                fontSize: 16,
-                fontWeight: 700,
-                fontFamily: "inherit",
-                cursor: "pointer",
-                transition: "opacity .15s ease",
-              }}
-            >
-              Practice again
-            </button>
+            {/* CTAs — primary repeats same scenario, secondary picks another */}
+            <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 12 }}>
+              <button
+                onClick={() => startScenario(scenario)}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: T.accent,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: T.pill,
+                  padding: "17px 24px",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                  transition: "opacity .15s ease",
+                }}
+              >
+                <RotateCcw size={17} />
+                Try this again
+              </button>
+              <button
+                onClick={() => setScreen("home")}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  background: "none",
+                  color: T.text,
+                  border: `1.5px solid ${T.border}`,
+                  borderRadius: T.pill,
+                  padding: "15px 24px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  fontFamily: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                <MapPin size={17} />
+                Pick another scenario
+              </button>
+            </div>
           </div>
         )}
       </div>

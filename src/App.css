@@ -46,6 +46,36 @@
   text-underline-offset: 2px;
 }
 
+/* ─── Entrance animations ───────────────────────────────────────────────────
+   sf-screen: whole-screen fade-in on navigation (short, calm).
+   sf-fade-up: section-level staggered reveal, e.g. landing page groups.
+   sf-reveal: quick inline reveal for popover/panel elements.
+   animation-fill-mode:both keeps elements invisible before their delay fires. */
+@keyframes sf-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.sf-screen {
+  animation: sf-fade-up .22s ease both;
+}
+.sf-fade-up {
+  animation: sf-fade-up .30s ease both;
+}
+.sf-reveal {
+  animation: sf-fade-up .16s ease both;
+}
+
+/* ─── Mic recording pulse ───────────────────────────────────────────────────
+   Radiating ring makes the active-listening state unmistakable at a glance. */
+@keyframes sf-pulse-ring {
+  0%   { box-shadow: 0 0 0  0px rgba(232, 101, 78, .50); }
+  70%  { box-shadow: 0 0 0 18px rgba(232, 101, 78, 0);   }
+  100% { box-shadow: 0 0 0  0px rgba(232, 101, 78, 0);   }
+}
+.sf-mic--listening {
+  animation: sf-pulse-ring 1.6s ease-out infinite;
+}
+
 /* ─── Global focus ring ────────────────────────────────────────────────────
    Every interactive element gets a visible coral ring — WCAG 2.4.11. */
 button:focus-visible {
@@ -55,12 +85,22 @@ button:focus-visible {
 }
 
 /* ─── Reduced motion ───────────────────────────────────────────────────────
-   Strip all transitions for users who prefer it. */
+   Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
   .sf-stop,
   .sf-stop:hover {
     transition: none;
     transform: none;
+  }
+  .sf-screen,
+  .sf-fade-up,
+  .sf-reveal {
+    animation: none;
+  }
+  .sf-mic--listening {
+    /* No pulse — static ring still makes the listening state clearly distinct */
+    animation: none;
+    box-shadow: 0 0 0 10px rgba(232, 101, 78, .22) !important;
   }
   button {
     transition: none !important;
