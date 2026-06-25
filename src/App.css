@@ -13,6 +13,39 @@
   border-radius: 18px;
 }
 
+/* ─── Word-tap buttons inside partner bubbles ──────────────────────────────
+   Render inline like normal text; underline on hover/active for affordance. */
+.sf-word {
+  display: inline;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+.sf-word:hover {
+  text-decoration: underline;
+  text-decoration-color: rgba(107, 101, 96, 0.45);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.sf-word:focus-visible {
+  outline: 2px solid #E8654E;
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.sf-word--active {
+  text-decoration: underline;
+  text-decoration-color: #6B6560;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
 /* ─── Global focus ring ────────────────────────────────────────────────────
    Every interactive element gets a visible coral ring — WCAG 2.4.11. */
 button:focus-visible {

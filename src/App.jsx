@@ -89,6 +89,14 @@ export default function App() {
   const [supported, setSupported] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 500);
 
+  // ── In-context comprehension support (in-memory cache, reset per scenario)
+  const [translations, setTranslations] = useState({});
+  const [shownTranslations, setShownTranslations] = useState(new Set());
+  const [wordMeanings, setWordMeanings] = useState({});
+  const [activeWord, setActiveWord] = useState(null); // { msgIdx, word } | null
+  const [hint, setHint] = useState(null); // null | 'loading' | 'error' | { spanish, english }
+  const [showHint, setShowHint] = useState(false);
+
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -122,6 +130,12 @@ export default function App() {
     setScenario(s);
     setMessages([{ role: "tutor", text: s.opener }]);
     setFeedback(null);
+    setTranslations({});
+    setShownTranslations(new Set());
+    setWordMeanings({});
+    setActiveWord(null);
+    setHint(null);
+    setShowHint(false);
     setScreen("chat");
     setTimeout(() => speak(s.opener), 400);
   }
@@ -159,6 +173,8 @@ Rules:
     const next = [...messages, { role: "user", text }];
     setMessages(next);
     setThinking(true);
+    setHint(null);
+    setShowHint(false);
     try {
       const reply = await getTutorReply(next);
       setMessages((m) => [...m, { role: "tutor", text: reply }]);
@@ -237,6 +253,127 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
       });
     } finally {
       setFeedbackLoading(false);
+    }
+  }
+
+  // ── In-context comprehension: translate a full partner message ──────────
+  async function fetchTranslation(msgIdx, text) {
+    setTranslations((prev) => ({ ...prev, [msgIdx]: "loading" }));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "translate",
+          system:
+            "Translate the following Spanish to natural English. Return ONLY the translation, no explanation.",
+          messages: [{ role: "user", content: text }],
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const { text: t } = await res.json();
+      setTranslations((prev) => ({ ...prev, [msgIdx]: t.trim() }));
+    } catch {
+      setTranslations((prev) => ({ ...prev, [msgIdx]: "error" }));
+    }
+  }
+
+  function toggleTranslation(msgIdx, text) {
+    const isShown = shownTranslations.has(msgIdx);
+    if (!isShown && (!translations[msgIdx] || translations[msgIdx] === "error")) {
+      fetchTranslation(msgIdx, text);
+    }
+    setShownTranslations((prev) => {
+      const next = new Set(prev);
+      if (isShown) next.delete(msgIdx);
+      else next.add(msgIdx);
+      return next;
+    });
+  }
+
+  // ── In-context comprehension: single word lookup ─────────────────────────
+  async function fetchWordMeaning(msgIdx, word, sentence) {
+    const key = `${msgIdx}::${word}`;
+    setWordMeanings((prev) => ({ ...prev, [key]: "loading" }));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "word",
+          system:
+            "You help Spanish learners understand individual words. Given a Spanish sentence and one word from it, give a very short English gloss (1–5 words) for that word as used in context. Reply with just the gloss — nothing else.",
+          messages: [
+            {
+              role: "user",
+              content: `Sentence: "${sentence}"\nWord: "${word}"`,
+            },
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const { text } = await res.json();
+      setWordMeanings((prev) => ({ ...prev, [key]: text.trim() }));
+    } catch {
+      setWordMeanings((prev) => ({ ...prev, [key]: "error" }));
+    }
+  }
+
+  function handleWordTap(e, msgIdx, rawWord, sentence) {
+    e.stopPropagation();
+    const word = rawWord
+      .replace(/[¡!¿?.,;:«»"""''()\[\]—]/g, "")
+      .trim()
+      .toLowerCase();
+    if (!word) return;
+    if (activeWord && activeWord.msgIdx === msgIdx && activeWord.word === word) {
+      setActiveWord(null);
+      return;
+    }
+    setActiveWord({ msgIdx, word });
+    const key = `${msgIdx}::${word}`;
+    if (!wordMeanings[key] || wordMeanings[key] === "error") {
+      fetchWordMeaning(msgIdx, word, sentence);
+    }
+  }
+
+  // ── In-context comprehension: reply hint ─────────────────────────────────
+  async function fetchHint() {
+    setHint("loading");
+    const convo = messages
+      .map((m) => `${m.role === "user" ? "Learner" : "Partner"}: ${m.text}`)
+      .join("\n");
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "hint",
+          system:
+            'You help a beginner Spanish learner keep a conversation going. Given the conversation so far, suggest ONE short, natural Spanish phrase the learner could say next, with its English meaning. Keep it simple and beginner-appropriate. Return ONLY valid JSON: {"spanish":"...","english":"..."}',
+          messages: [
+            {
+              role: "user",
+              content: `Conversation so far:\n${convo}\n\nSuggest one short reply for the Learner:`,
+            },
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const { text } = await res.json();
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setHint(parsed);
+    } catch {
+      setHint("error");
+    }
+  }
+
+  function toggleHint() {
+    if (showHint) {
+      setShowHint(false);
+    } else {
+      setShowHint(true);
+      if (!hint || hint === "error") fetchHint();
     }
   }
 
@@ -581,53 +718,189 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               ref={scrollRef}
               style={{ flex: 1, overflowY: "auto", padding: "24px 4px" }}
             >
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      m.role === "user" ? "flex-end" : "flex-start",
-                    marginBottom: 14,
-                  }}
-                >
-                  <div
-                    onClick={() => m.role === "tutor" && speak(m.text)}
-                    style={{
-                      maxWidth: "78%",
-                      padding: "13px 17px",
-                      borderRadius: T.card,
-                      fontSize: 16,
-                      lineHeight: 1.45,
-                      cursor: m.role === "tutor" ? "pointer" : "default",
-                      background: m.role === "user" ? T.text : T.surface,
-                      color: m.role === "user" ? "#fff" : T.text,
-                      border:
-                        m.role === "tutor"
-                          ? `1px solid ${T.border}`
-                          : "none",
-                      boxShadow:
-                        m.role === "tutor" ? T.shadowCard : "none",
-                      borderBottomRightRadius: m.role === "user" ? 4 : T.card,
-                      borderBottomLeftRadius:
-                        m.role === "tutor" ? 4 : T.card,
-                    }}
-                  >
-                    {m.text}
-                    {m.role === "tutor" && (
-                      <span
+              {messages.map((m, i) => {
+                /* ── User bubble ─────────────────────────────────────── */
+                if (m.role === "user") {
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        marginBottom: 14,
+                      }}
+                    >
+                      <div
                         style={{
-                          marginLeft: 8,
-                          fontSize: 11,
-                          color: T.textSub,
+                          maxWidth: "78%",
+                          padding: "13px 17px",
+                          borderRadius: T.card,
+                          borderBottomRightRadius: 4,
+                          fontSize: 16,
+                          lineHeight: 1.45,
+                          background: T.text,
+                          color: "#fff",
                         }}
                       >
-                        ⏵
-                      </span>
-                    )}
+                        {m.text}
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* ── Partner bubble with comprehension controls ───────── */
+                const wordKey =
+                  activeWord && activeWord.msgIdx === i
+                    ? `${i}::${activeWord.word}`
+                    : null;
+                const wordMeaning = wordKey ? wordMeanings[wordKey] : null;
+                const xlation = translations[i];
+                const xlShown = shownTranslations.has(i);
+
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                      marginBottom: 18,
+                    }}
+                  >
+                    {/* Bubble */}
+                    <div
+                      style={{
+                        maxWidth: "78%",
+                        padding: "13px 17px",
+                        borderRadius: T.card,
+                        borderBottomLeftRadius: 4,
+                        fontSize: 16,
+                        lineHeight: 1.45,
+                        background: T.surface,
+                        color: T.text,
+                        border: `1px solid ${T.border}`,
+                        boxShadow: T.shadowCard,
+                      }}
+                    >
+                      {/* Clickable words */}
+                      <div style={{ lineHeight: 1.45 }}>
+                        {m.text.split(/(\s+)/).map((seg, wi) => {
+                          if (/^\s+$/.test(seg))
+                            return <span key={wi}>{seg}</span>;
+                          const clean = seg
+                            .replace(/[¡!¿?.,;:«»"""''()\[\]—]/g, "")
+                            .trim()
+                            .toLowerCase();
+                          if (!clean) return <span key={wi}>{seg}</span>;
+                          const isActive =
+                            activeWord &&
+                            activeWord.msgIdx === i &&
+                            activeWord.word === clean;
+                          return (
+                            <button
+                              key={wi}
+                              className={`sf-word${
+                                isActive ? " sf-word--active" : ""
+                              }`}
+                              onClick={(e) =>
+                                handleWordTap(e, i, seg, m.text)
+                              }
+                            >
+                              {seg}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Word meaning panel */}
+                      {wordKey && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            paddingTop: 10,
+                            borderTop: `1px solid ${T.border}`,
+                            fontSize: 13,
+                            color: T.textSub,
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          <em style={{ color: T.text, fontStyle: "italic" }}>
+                            {activeWord.word}
+                          </em>
+                          {" — "}
+                          {wordMeaning === "loading"
+                            ? "…"
+                            : wordMeaning === "error"
+                            ? "couldn't look up"
+                            : wordMeaning}
+                        </div>
+                      )}
+
+                      {/* Play row */}
+                      <div
+                        style={{
+                          marginTop: 10,
+                          display: "flex",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          onClick={() => speak(m.text)}
+                          aria-label="Play"
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: 13,
+                            color: T.textSub,
+                            padding: 0,
+                            fontFamily: "inherit",
+                          }}
+                        >
+                          ⏵
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Translate row (below bubble) */}
+                    <div style={{ marginTop: 6, marginLeft: 2 }}>
+                      <button
+                        onClick={() => toggleTranslation(i, m.text)}
+                        style={{
+                          background: "none",
+                          border: `1px solid ${T.border}`,
+                          borderRadius: T.pill,
+                          padding: "3px 10px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          color: T.textSub,
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {xlShown ? "↑ hide" : "↓ English"}
+                      </button>
+                      {xlShown && xlation && (
+                        <div
+                          style={{
+                            marginTop: 6,
+                            fontSize: 14,
+                            color: T.textSub,
+                            fontStyle: "italic",
+                            lineHeight: 1.45,
+                            paddingLeft: 2,
+                          }}
+                        >
+                          {xlation === "loading"
+                            ? "…"
+                            : xlation === "error"
+                            ? "Couldn't translate"
+                            : xlation}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {thinking && (
                 <div
                   style={{
@@ -652,6 +925,77 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 gap: 12,
               }}
             >
+              {/* How to reply hint — visible only when partner just spoke */}
+              {messages.length > 0 &&
+                messages[messages.length - 1].role === "tutor" &&
+                !listening &&
+                !thinking && (
+                  <div
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    {showHint && (
+                      <div
+                        style={{
+                          width: "100%",
+                          background: T.surface,
+                          border: `1px solid ${T.border}`,
+                          borderRadius: T.card,
+                          padding: "14px 16px",
+                          boxShadow: T.shadowCard,
+                        }}
+                      >
+                        {hint === "loading" ? (
+                          <span style={{ fontSize: 14, color: T.textSub }}>
+                            …
+                          </span>
+                        ) : hint === "error" ? (
+                          <span style={{ fontSize: 14, color: T.textSub }}>
+                            Couldn't suggest a reply
+                          </span>
+                        ) : hint && typeof hint === "object" ? (
+                          <>
+                            <div
+                              style={{
+                                fontSize: 15,
+                                fontWeight: 600,
+                                color: T.text,
+                                lineHeight: 1.3,
+                                marginBottom: 4,
+                              }}
+                            >
+                              {hint.spanish}
+                            </div>
+                            <div style={{ fontSize: 13, color: T.textSub }}>
+                              {hint.english}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                    <button
+                      onClick={toggleHint}
+                      style={{
+                        background: "none",
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.pill,
+                        padding: "5px 14px",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        color: T.textSub,
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {showHint ? "↑ hide hint" : "how to reply?"}
+                    </button>
+                  </div>
+                )}
+
               <button
                 onClick={toggleListen}
                 disabled={!supported || thinking}
