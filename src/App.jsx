@@ -1,5 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
+import {
+  ArrowLeft,
+  Languages,
+  Lightbulb,
+  Mic,
+  Square,
+  Star,
+  Volume2,
+} from "lucide-react";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -507,9 +516,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                           color: T.accent,
                           letterSpacing: "0.10em",
                           marginBottom: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
                         }}
                       >
-                        ✦ Start here
+                        <Star size={11} />
+                        Start here
                       </div>
                     )}
                     <div
@@ -680,9 +693,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   fontSize: 14,
                   fontFamily: "inherit",
                   padding: "4px 0",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
                 }}
               >
-                ← Leave
+                <ArrowLeft size={15} />
+                Leave
               </button>
               <div
                 style={{
@@ -846,18 +863,18 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       >
                         <button
                           onClick={() => speak(m.text)}
-                          aria-label="Play"
+                          aria-label="Play audio"
                           style={{
                             background: "none",
                             border: "none",
                             cursor: "pointer",
-                            fontSize: 13,
                             color: T.textSub,
                             padding: 0,
-                            fontFamily: "inherit",
+                            display: "flex",
+                            alignItems: "center",
                           }}
                         >
-                          ⏵
+                          <Volume2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -875,9 +892,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                           fontSize: 12,
                           color: T.textSub,
                           fontFamily: "inherit",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
                         }}
                       >
-                        {xlShown ? "↑ hide" : "↓ English"}
+                        <Languages size={12} />
+                        {xlShown ? "hide" : "English"}
                       </button>
                       {xlShown && xlation && (
                         <div
@@ -989,9 +1010,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                         fontSize: 12,
                         color: T.textSub,
                         fontFamily: "inherit",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 5,
                       }}
                     >
-                      {showHint ? "↑ hide hint" : "how to reply?"}
+                      <Lightbulb size={12} />
+                      {showHint ? "hide hint" : "how to reply?"}
                     </button>
                   </div>
                 )}
@@ -1011,7 +1036,6 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     ? T.border
                     : T.text,
                   color: "#fff",
-                  fontSize: 28,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1022,8 +1046,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     : T.shadowMic,
                   transition: "background .2s ease, box-shadow .2s ease",
                 }}
+                aria-label={listening ? "Stop recording" : "Start speaking"}
               >
-                {listening ? "■" : "🎙"}
+                {listening ? (
+                  <Square size={28} fill="currentColor" strokeWidth={0} />
+                ) : (
+                  <Mic size={28} />
+                )}
               </button>
               <span style={{ fontSize: 13, color: T.textSub }}>
                 {listening
