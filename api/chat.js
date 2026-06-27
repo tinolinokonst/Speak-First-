@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: { coach: 1024, translate: 150, word: 60, hint: 150 }[kind] ?? 300,
+        max_tokens: { coach: 1024, translate: 150, word: 60, hint: 150, warmup: 350 }[kind] ?? 300,
         system,
         messages,
       }),

@@ -147,7 +147,7 @@ const OL = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback | settings | why
+  const [screen, setScreen] = useState("landing"); // landing | auth | home | warmup | chat | feedback | settings | why
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -156,6 +156,7 @@ export default function App() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [supported, setSupported] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 500);
+  const [warmupPhrases, setWarmupPhrases] = useState({}); // { [scenarioId]: "loading" | null | phrase[] }
 
   // ── Auth state
   const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
@@ -279,6 +280,45 @@ export default function App() {
     setShowHint(false);
     setScreen("chat");
     setTimeout(() => speak(s.opener), 400);
+  }
+
+  async function fetchWarmupPhrases(s) {
+    setWarmupPhrases((prev) => ({ ...prev, [s.id]: "loading" }));
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "warmup",
+          system:
+            "You are a Spanish language teaching assistant. Return ONLY a JSON array — no prose, no code fences, no explanation.",
+          messages: [
+            {
+              role: "user",
+              content:
+                `Scenario: "${s.title}" (${s.sub}).\n\n` +
+                `List 6 useful Spanish words or short phrases a beginner needs for this conversation. ` +
+                `Return ONLY a JSON array in this exact format, nothing else:\n` +
+                `[{"spanish":"...","english":"..."}]`,
+            },
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error("API error");
+      const { text } = await res.json();
+      const cleaned = text.replace(/```[a-z]*\n?/gi, "").replace(/```/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (!Array.isArray(parsed)) throw new Error("Not an array");
+      setWarmupPhrases((prev) => ({ ...prev, [s.id]: parsed.slice(0, 8) }));
+    } catch {
+      setWarmupPhrases((prev) => ({ ...prev, [s.id]: null }));
+    }
+  }
+
+  function goToWarmup(s) {
+    setScenario(s);
+    setScreen("warmup");
+    if (!(s.id in warmupPhrases)) fetchWarmupPhrases(s);
   }
 
   // ── Conversation call. The system prompt is the whole product. It stays in
@@ -1028,7 +1068,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 const makeCard = (s) => (
                   <button
                     className="sf-stop"
-                    onClick={() => startScenario(s)}
+                    onClick={() => goToWarmup(s)}
                     style={{
                       width: "100%",
                       textAlign: "left",
@@ -1197,6 +1237,189 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             </div>
           </div>
         )}
+
+        {/* ── WARMUP ──────────────────────────────── */}
+        {screen === "warmup" && scenario && (() => {
+          const phrasesVal = warmupPhrases[scenario.id];
+          const isLoading = phrasesVal === "loading" || phrasesVal === undefined;
+          const isError   = phrasesVal === null;
+          const phraseList = Array.isArray(phrasesVal) ? phrasesVal : [];
+          return (
+            <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
+
+              {/* Header */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: 36,
+                }}
+              >
+                <button
+                  onClick={() => setScreen("home")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: T.textSub,
+                    display: "flex",
+                    alignItems: "center",
+                    padding: 4,
+                  }}
+                  aria-label="Back to scenarios"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div style={{ ...OL, color: T.accent }}>Speak First</div>
+              </div>
+
+              {/* Heading + skip */}
+              <div className="sf-fade-up">
+                <div style={{ ...OL, color: T.textSub, marginBottom: 12 }}>
+                  {scenario.level} · {scenario.title}
+                </div>
+                <h1
+                  style={{
+                    fontSize: 26,
+                    fontWeight: 700,
+                    letterSpacing: "-0.018em",
+                    lineHeight: 1.2,
+                    margin: "0 0 10px",
+                    color: T.text,
+                  }}
+                >
+                  A few words before you start
+                </h1>
+                <p
+                  style={{
+                    fontSize: 15,
+                    lineHeight: 1.6,
+                    color: T.textSub,
+                    margin: "0 0 18px",
+                  }}
+                >
+                  No need to memorise these — just a quick look before you go in.
+                </p>
+
+                {/* Prominent skip — visible immediately, before phrases load */}
+                <button
+                  onClick={() => startScenario(scenario)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: T.accent,
+                    fontFamily: "inherit",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "4px 0",
+                    marginBottom: 32,
+                  }}
+                >
+                  Skip — start talking now →
+                </button>
+              </div>
+
+              {/* Loading */}
+              {isLoading && (
+                <div style={{ color: T.textSub, fontSize: 14, padding: "8px 0 24px", lineHeight: 1.5 }}>
+                  Getting key phrases for this scenario…
+                </div>
+              )}
+
+              {/* Error fallback */}
+              {isError && (
+                <div style={{ color: T.textSub, fontSize: 14, padding: "8px 0 24px", lineHeight: 1.5 }}>
+                  Couldn't load phrases — you can still head right in.
+                </div>
+              )}
+
+              {/* Phrase cards */}
+              {!isLoading && !isError && phraseList.length > 0 && (
+                <div
+                  className="sf-fade-up"
+                  style={{ display: "flex", flexDirection: "column", gap: 10, animationDelay: ".08s" }}
+                >
+                  {phraseList.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        background: T.surface,
+                        border: `1px solid ${T.border}`,
+                        borderRadius: T.card,
+                        padding: "14px 16px",
+                        boxShadow: T.shadowCard,
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>
+                          {p.spanish}
+                        </div>
+                        <div style={{ fontSize: 13, color: T.textSub, marginTop: 3, lineHeight: 1.3 }}>
+                          {p.english}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => speak(p.spanish)}
+                        aria-label={`Hear "${p.spanish}"`}
+                        style={{
+                          background: "none",
+                          border: `1px solid ${T.border}`,
+                          borderRadius: T.pill,
+                          cursor: "pointer",
+                          color: T.textSub,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "7px 10px",
+                          flexShrink: 0,
+                          transition: "border-color .12s ease, color .12s ease",
+                        }}
+                      >
+                        <Volume2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Start conversation CTA */}
+              <div
+                className="sf-fade-up"
+                style={{ marginTop: 36, animationDelay: ".16s" }}
+              >
+                <button
+                  onClick={() => startScenario(scenario)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: T.accent,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: T.pill,
+                    padding: "17px 24px",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    transition: "opacity .15s ease",
+                  }}
+                >
+                  Start conversation
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+
+            </div>
+          );
+        })()}
 
         {/* ── CHAT ───────────────────────────────── */}
         {screen === "chat" && scenario && (
