@@ -276,7 +276,13 @@ export default function App() {
     const doSpeak = () => {
       if (speakVersionRef.current !== version) return;
       pendingSpeakRef.current = null;
-      const u = new SpeechSynthesisUtterance(text);
+      // Strip pictographic emoji (and their variation selectors / ZWJ sequences) so
+      // the browser never reads "cara sonriente" or similar emoji names aloud.
+      const spoken = text
+        .replace(/\p{Extended_Pictographic}[︀-️‍]*/gu, "")
+        .replace(/ {2,}/g, " ")
+        .trim();
+      const u = new SpeechSynthesisUtterance(spoken);
       u.lang = "es-ES";
       u.rate = 0.95;
       const voices = synth.getVoices();
@@ -320,7 +326,7 @@ export default function App() {
         body: JSON.stringify({
           kind: "warmup",
           system:
-            "You are a Spanish language teaching assistant. Return ONLY a JSON array — no prose, no code fences, no explanation.",
+            "You are a Spanish language teaching assistant. Return ONLY a JSON array — no prose, no code fences, no explanation. Do not include any emojis or symbols in the Spanish or English values.",
           messages: [
             {
               role: "user",
@@ -363,7 +369,8 @@ Rules:
 - Stay fully in character. Never break role.
 - NEVER correct the learner's mistakes or comment on their Spanish. Just respond to what they meant and keep the conversation moving.
 - If they make an error, understand their intent and react naturally, like a patient native speaker would.
-- Ask a follow-up question to keep them talking.`;
+- Ask a follow-up question to keep them talking.
+- Do not use any emojis, emoticons, or symbols. Reply in plain text only — your reply will be read aloud.`;
 
     const res = await fetch("/api/chat", {
       method: "POST",
