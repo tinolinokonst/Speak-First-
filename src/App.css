@@ -84,6 +84,69 @@ button:focus-visible {
   border-radius: 6px;
 }
 
+/* ─── Primary CTA button ───────────────────────────────────────────────────
+   Full-width coral pill. Lifts + brightens on hover; depresses on active. */
+.sf-btn-primary {
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.sf-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(232, 101, 78, .30);
+  filter: brightness(1.06);
+}
+.sf-btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: none;
+  filter: brightness(0.96);
+}
+
+/* ─── Ghost / text button ──────────────────────────────────────────────────
+   Subtle underline on hover; no box decoration — keeps it quiet. */
+.sf-btn-ghost {
+  transition: opacity .12s ease;
+}
+.sf-btn-ghost:hover {
+  opacity: 0.70;
+}
+.sf-btn-ghost:active {
+  opacity: 0.50;
+}
+
+/* ─── Mark buttons (Know it / Still learning) ──────────────────────────────
+   Lift on hover; press on active; focus ring matches the card colour. */
+.sf-btn-mark {
+  transition: transform .12s ease, box-shadow .12s ease, background .15s, border-color .15s, color .15s;
+}
+.sf-btn-mark:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(30, 27, 22, .08);
+}
+.sf-btn-mark:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+/* ─── Flashcard ─────────────────────────────────────────────────────────────
+   The outer tap-target. Mild lift on hover so it feels tappable. */
+.sf-flashcard {
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.sf-flashcard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(30, 27, 22, .08);
+}
+.sf-flashcard:focus-visible {
+  outline: 2px solid #E8654E;
+  outline-offset: 3px;
+  border-radius: 18px;
+}
+
+/* ─── Card face ─────────────────────────────────────────────────────────────
+   Used on both 3-D faces so they share consistent border-radius. */
+.sf-card-face {
+  border-radius: 18px;
+}
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────
    Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
@@ -101,6 +164,14 @@ button:focus-visible {
     /* No pulse — static ring still makes the listening state clearly distinct */
     animation: none;
     box-shadow: 0 0 0 10px rgba(232, 101, 78, .22) !important;
+  }
+  .sf-btn-primary,
+  .sf-btn-ghost,
+  .sf-btn-mark,
+  .sf-flashcard {
+    transition: none !important;
+    transform: none !important;
+    box-shadow: none !important;
   }
   button {
     transition: none !important;

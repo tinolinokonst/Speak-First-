@@ -167,14 +167,21 @@ const T = {
   textSub:     "#6B6560",   // secondary labels / captions
   border:      "#EDE8E2",   // card borders and dividers
 
-  // Accent — coral/terracotta. ONE element per screen gets this. Chime discipline:
-  // do not flood the UI. In chat, only the mic ring while listening.
+  // Accent — coral/terracotta. Primary actions and key highlights.
   accent:     "#E8654E",
-  accentTint: "#FBE9E3",   // badge backgrounds, tint fills — very soft
+  accentTint: "#FBE9E3",
 
-  // Support — muted sage. Reserved for encouragement / success moments only.
+  // Support — muted sage. Encouragement / success moments.
   support:     "#5C7A6B",
   supportTint: "#E8F0EB",
+
+  // Known (flashcard "Know it") — vivid sage-green; white text WCAG AA 5.3:1
+  known:     "#2E7D52",
+  knownTint: "#E5F3EC",
+
+  // Learn (flashcard "Still learning") — deeper coral; white text WCAG AA 4.8:1
+  learn:     "#C44B32",
+  learnTint: "#FAE9E5",
 
   // Typography — warm humanist sans. Inter if available, system stack otherwise.
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
@@ -196,6 +203,16 @@ const OL = {
   textTransform: "uppercase",
 };
 
+// CEFR level badge colors — green for beginner, amber for intermediate, indigo for advanced
+const LEVEL_BADGE = {
+  A1: { text: "#2E7D52", bg: "#E5F3EC" },
+  A2: { text: "#2E7D52", bg: "#E5F3EC" },
+  B1: { text: "#7A5200", bg: "#FEF3E2" },
+  B2: { text: "#7A5200", bg: "#FEF3E2" },
+  C1: { text: "#3B4ABB", bg: "#ECEFFE" },
+  C2: { text: "#3B4ABB", bg: "#ECEFFE" },
+};
+
 export default function App() {
   const [screen, setScreen] = useState("landing"); // landing | auth | home | warmup | chat | feedback | settings | why
   const [scenario, setScenario] = useState(null);
@@ -212,6 +229,7 @@ export default function App() {
   const [warmupFlipped, setWarmupFlipped] = useState(false);
   const [warmupPhase, setWarmupPhase] = useState("cards"); // "cards" | "summary"
   const [warmupMarks, setWarmupMarks] = useState([]); // sparse array by card index: "known" | "learning"
+  const [warmupDeck, setWarmupDeck] = useState(null); // null = full phraseList; array = review subset
 
   // ── Auth state
   const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
@@ -412,6 +430,7 @@ export default function App() {
     setWarmupFlipped(false);
     setWarmupPhase("cards");
     setWarmupMarks([]);
+    setWarmupDeck(null);
     if (!(s.id in warmupPhrases)) fetchWarmupPhrases(s);
   }
 
@@ -1190,16 +1209,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                         display: "inline-block",
                         ...OL,
                         letterSpacing: "0.08em",
-                        color: s.level.startsWith("A")
-                          ? T.support
-                          : s.level.startsWith("B")
-                          ? T.accent
-                          : T.text,
-                        background: s.level.startsWith("A")
-                          ? T.supportTint
-                          : s.level.startsWith("B")
-                          ? T.accentTint
-                          : T.border,
+                        color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub,
+                        background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border,
                         padding: "4px 9px",
                         borderRadius: T.pill,
                       }}
@@ -1309,8 +1320,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
           const isLoading = phrasesVal === "loading" || phrasesVal === undefined;
           const isError   = phrasesVal === null;
           const phraseList = Array.isArray(phrasesVal) ? phrasesVal : [];
-          const totalCards = phraseList.length;
+          const currentDeck = warmupDeck || phraseList;
+          const totalCards = currentDeck.length;
           const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const isReviewRound = warmupDeck !== null;
 
           function markAndAdvance(status) {
             setWarmupMarks(prev => { const n = [...prev]; n[warmupIndex] = status; return n; });
@@ -1336,6 +1349,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </button>
               <div style={{ ...OL, color: T.accent }}>Speak First</div>
               <button
+                className="sf-btn-ghost"
                 onClick={() => startScenario(scenario)}
                 style={{ background: "none", border: "none", color: T.textSub, fontFamily: "inherit", fontSize: 13, cursor: "pointer", padding: "4px 0" }}
               >
@@ -1346,25 +1360,35 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
           /* ── Summary phase ── */
           if (warmupPhase === "summary") {
-            const stillLearning = phraseList.filter((_, i) => warmupMarks[i] === "learning");
-            const summaryMsg = knownCount === totalCards
-              ? `You knew all ${totalCards} — go straight in.`
-              : learningCount === totalCards
-              ? `${learningCount} to keep in mind — they'll click once you're talking.`
-              : `Knew ${knownCount} · still working on ${learningCount}.`;
+            const stillLearning = currentDeck.filter((_, i) => warmupMarks[i] === "learning");
             return (
               <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
                 {sharedHeader}
                 <div className="sf-fade-up">
                   <div style={{ ...OL, color: T.textSub, marginBottom: 12 }}>{scenario.level} · {scenario.title}</div>
-                  <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.018em", lineHeight: 1.2, margin: "0 0 8px", color: T.text }}>
-                    You're ready.
+                  <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.018em", lineHeight: 1.2, margin: "0 0 16px", color: T.text }}>
+                    {knownCount === totalCards ? "All locked in." : "Ready to go in."}
                   </h1>
-                  <p style={{ fontSize: 15, color: T.textSub, lineHeight: 1.6, margin: "0 0 24px" }}>
-                    {summaryMsg}
-                  </p>
+
+                  {/* Colour-coded count badges */}
+                  {(knownCount > 0 || learningCount > 0) && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+                      {knownCount > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.knownTint, color: T.known, borderRadius: T.pill, padding: "5px 12px", fontSize: 13, fontWeight: 600 }}>
+                          <Check size={13} /> {knownCount} known
+                        </span>
+                      )}
+                      {learningCount > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.learnTint, color: T.learn, borderRadius: T.pill, padding: "5px 12px", fontSize: 13, fontWeight: 600 }}>
+                          <BookOpen size={13} /> {learningCount} to practise
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Still-learning quick-reference list */}
                   {stillLearning.length > 0 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                       {stillLearning.map((p, i) => (
                         <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxShadow: T.shadowCard }}>
                           <div>
@@ -1379,27 +1403,64 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     </div>
                   )}
                 </div>
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <button
+                    className="sf-btn-primary"
                     onClick={() => startScenario(scenario)}
                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.accent, color: "#fff", border: "none", borderRadius: T.pill, padding: "17px 24px", fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
                   >
                     Start conversation <ChevronRight size={18} />
                   </button>
-                  <button
-                    onClick={() => { setWarmupIndex(0); setWarmupFlipped(false); setWarmupPhase("cards"); setWarmupMarks([]); }}
-                    style={{ background: "none", border: "none", color: T.textSub, fontFamily: "inherit", fontSize: 14, cursor: "pointer", padding: "8px 0", textAlign: "center" }}
-                  >
-                    ← Review again
-                  </button>
+                  {stillLearning.length > 0 && (
+                    <button
+                      className="sf-btn-mark"
+                      onClick={() => {
+                        setWarmupDeck(stillLearning);
+                        setWarmupIndex(0);
+                        setWarmupFlipped(false);
+                        setWarmupPhase("cards");
+                        setWarmupMarks([]);
+                      }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.learnTint, color: T.learn, border: `1.5px solid ${T.learn}`, borderRadius: T.pill, padding: "14px 24px", fontSize: 15, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+                    >
+                      <RotateCcw size={15} /> Review still-learning ({stillLearning.length})
+                    </button>
+                  )}
+                  {!isReviewRound && (
+                    <button
+                      className="sf-btn-ghost"
+                      onClick={() => { setWarmupDeck(null); setWarmupIndex(0); setWarmupFlipped(false); setWarmupPhase("cards"); setWarmupMarks([]); }}
+                      style={{ background: "none", border: "none", color: T.textSub, fontFamily: "inherit", fontSize: 14, cursor: "pointer", padding: "8px 0", textAlign: "center" }}
+                    >
+                      ← Review all again
+                    </button>
+                  )}
                 </div>
               </div>
             );
           }
 
           /* ── Cards phase ── */
-          const card = phraseList[warmupIndex] || null;
+          const card = currentDeck[warmupIndex] || null;
           const currentMark = warmupMarks[warmupIndex];
+
+          /* Progress dots — coloured per mark status */
+          const progressDots = (
+            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+              {currentDeck.map((_, i) => (
+                <div key={i} style={{
+                  width: i === warmupIndex ? 20 : 7,
+                  height: 7,
+                  borderRadius: 4,
+                  background: warmupMarks[i] === "known" ? T.known
+                    : warmupMarks[i] === "learning" ? T.learn
+                    : i === warmupIndex ? T.text : T.border,
+                  transition: reducedMotion ? "none" : "width .22s ease, background .22s ease",
+                }} />
+              ))}
+            </div>
+          );
 
           const cardFront = card && (
             <>
@@ -1413,7 +1474,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               <div style={{ fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center", lineHeight: 1.3 }}>
                 {card.spanish}
               </div>
-              <div style={{ fontSize: 12, color: T.textSub, marginTop: 6 }}>tap to see translation</div>
+              <div style={{ fontSize: 12, color: T.textSub, marginTop: 6 }}>tap card to see translation</div>
             </>
           );
 
@@ -1430,7 +1491,6 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
           return (
             <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
               {sharedHeader}
-
               <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>{scenario.level} · {scenario.title}</div>
 
               {isLoading && (
@@ -1447,104 +1507,86 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               {!isLoading && !isError && totalCards > 0 && (
                 <div className="sf-fade-up" style={{ animationDelay: ".08s" }}>
 
-                  {/* Progress */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, color: T.textSub }}>{warmupIndex + 1} of {totalCards}</div>
-                    {currentMark && (
-                      <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", color: currentMark === "known" ? T.support : T.accent }}>
-                        {currentMark === "known" ? "✓ Know it" : "Still learning"}
-                      </div>
-                    )}
+                  {/* Progress dots + counter */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    {progressDots}
+                    <div style={{ fontSize: 13, color: T.textSub, fontVariantNumeric: "tabular-nums" }}>{warmupIndex + 1} / {totalCards}</div>
                   </div>
 
-                  {/* Flip card */}
+                  {/* Flip card — re-keyed on index so sf-reveal fires on every card change */}
                   {reducedMotion ? (
-                    /* Reduced motion: instant toggle, no animation */
                     <div
+                      key={warmupIndex}
+                      className="sf-flashcard"
                       onClick={() => setWarmupFlipped(f => !f)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setWarmupFlipped(f => !f); }}}
                       tabIndex={0}
                       role="button"
-                      aria-label={warmupFlipped ? `Translation shown: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
-                      style={{ background: warmupFlipped ? T.surfaceWarm : T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", marginBottom: 20, outline: "none" }}
+                      aria-label={warmupFlipped ? `Translation: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
+                      style={{ background: warmupFlipped ? T.surfaceWarm : T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "36px 24px", minHeight: 168, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", marginBottom: 20, outline: "none" }}
                     >
                       {warmupFlipped ? cardBack : cardFront}
                     </div>
                   ) : (
-                    /* CSS 3D flip */
                     <div
+                      key={warmupIndex}
+                      className="sf-reveal sf-flashcard"
                       onClick={() => setWarmupFlipped(f => !f)}
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setWarmupFlipped(f => !f); }}}
                       tabIndex={0}
                       role="button"
-                      aria-label={warmupFlipped ? `Translation shown: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
+                      aria-label={warmupFlipped ? `Translation: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
                       style={{ perspective: "900px", WebkitPerspective: "900px", cursor: "pointer", marginBottom: 20, outline: "none" }}
                     >
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr",
-                          width: "100%",
-                          transformStyle: "preserve-3d",
-                          WebkitTransformStyle: "preserve-3d",
-                          transition: "transform 0.38s ease",
-                          transform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
-                          WebkitTransform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
-                        }}
-                      >
-                        {/* Front face */}
-                        <div style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr",
+                        width: "100%",
+                        transformStyle: "preserve-3d",
+                        WebkitTransformStyle: "preserve-3d",
+                        transition: "transform 0.44s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
+                        WebkitTransform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
+                      }}>
+                        <div className="sf-card-face" style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "36px 24px", minHeight: 168, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
                           {cardFront}
                         </div>
-                        {/* Back face */}
-                        <div style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", WebkitTransform: "rotateY(180deg)", background: T.surfaceWarm, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                        <div className="sf-card-face" style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", WebkitTransform: "rotateY(180deg)", background: T.surfaceWarm, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "36px 24px", minHeight: 168, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
                           {cardBack}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Mark buttons */}
-                  <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+                  {/* Mark buttons — the ONLY way to advance (fixes skip-through bug) */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
                     <button
+                      className="sf-btn-mark"
                       onClick={() => markAndAdvance("known")}
-                      style={{ flex: 1, padding: "13px 8px", background: currentMark === "known" ? T.support : T.surface, color: currentMark === "known" ? "#fff" : T.text, border: `1px solid ${currentMark === "known" ? T.support : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "background .15s, border-color .15s, color .15s" }}
+                      aria-label="Mark as known and advance"
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "14px 8px", background: currentMark === "known" ? T.known : T.surface, color: currentMark === "known" ? "#fff" : T.text, border: `1.5px solid ${currentMark === "known" ? T.known : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                     >
-                      ✓ Know it
+                      <Check size={15} /> Know it
                     </button>
                     <button
+                      className="sf-btn-mark"
                       onClick={() => markAndAdvance("learning")}
-                      style={{ flex: 1, padding: "13px 8px", background: currentMark === "learning" ? T.accentTint : T.surface, color: currentMark === "learning" ? T.accent : T.text, border: `1px solid ${currentMark === "learning" ? T.accent : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "background .15s, border-color .15s, color .15s" }}
+                      aria-label="Mark as still learning and advance"
+                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "14px 8px", background: currentMark === "learning" ? T.learnTint : T.surface, color: currentMark === "learning" ? T.learn : T.text, border: `1.5px solid ${currentMark === "learning" ? T.learn : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                     >
-                      Still learning
+                      <BookOpen size={15} /> Still learning
                     </button>
                   </div>
 
-                  {/* Prev / Next navigation */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <button
-                      onClick={() => { setWarmupIndex(i => Math.max(0, i - 1)); setWarmupFlipped(false); }}
-                      disabled={warmupIndex === 0}
-                      style={{ background: "none", border: "none", color: warmupIndex === 0 ? T.border : T.textSub, cursor: warmupIndex === 0 ? "default" : "pointer", fontFamily: "inherit", fontSize: 14, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
-                    >
-                      <ArrowLeft size={14} /> Prev
-                    </button>
-                    {warmupIndex < totalCards - 1 ? (
-                      <button
-                        onClick={() => { setWarmupIndex(i => i + 1); setWarmupFlipped(false); }}
-                        style={{ background: "none", border: "none", color: T.textSub, cursor: "pointer", fontFamily: "inherit", fontSize: 14, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
-                      >
-                        Next <ChevronRight size={14} />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => setWarmupPhase("summary")}
-                        style={{ background: "none", border: "none", color: T.accent, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
-                      >
-                        Finish <ChevronRight size={14} />
-                      </button>
-                    )}
-                  </div>
+                  {/* Back nav only — no Next; marking IS the advance mechanism */}
+                  <button
+                    className="sf-btn-ghost"
+                    onClick={() => { setWarmupIndex(i => Math.max(0, i - 1)); setWarmupFlipped(false); }}
+                    disabled={warmupIndex === 0}
+                    style={{ background: "none", border: "none", color: warmupIndex === 0 ? T.border : T.textSub, cursor: warmupIndex === 0 ? "default" : "pointer", fontFamily: "inherit", fontSize: 14, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
+                  >
+                    <ArrowLeft size={14} /> Back
+                  </button>
                 </div>
               )}
             </div>
