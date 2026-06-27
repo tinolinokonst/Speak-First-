@@ -1176,22 +1176,40 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 const journey = [...SCENARIOS].sort(
                   (a, b) => a.difficulty - b.difficulty
                 );
-                // DOT_COL: width of the column holding the path dot.
-                // Vertical line centers inside it on desktop; fixed 15px on mobile.
                 const DOT_COL = 32;
 
-                const makeDot = (s) => {
+                // First scenario in arc order that the user has NOT completed.
+                // -1 means every scenario is done (all highlighted green, no "current").
+                const currentIdx = journey.findIndex(s => !completions.has(s.id));
+
+                // Fraction of the path line to fill with solid green (0–100).
+                // Aligns with the current dot's approximate position along the arc.
+                const currentPct = currentIdx < 0
+                  ? 100
+                  : currentIdx === 0
+                  ? 0
+                  : (currentIdx / (journey.length - 1)) * 100;
+
+                // Shared positioning for both path-line segments
+                const lineX = {
+                  left:      isMobile ? 15 : "50%",
+                  transform: isMobile ? "none" : "translateX(-50%)",
+                };
+
+                const makeDot = (s, isCurrent) => {
                   const isDone = completions.has(s.id);
+                  const size   = (isDone || isCurrent) ? 16 : 11;
+                  const bg     = isDone ? T.known   : (isCurrent ? T.accent   : T.textSub);
+                  const ring   = isDone ? T.known   : (isCurrent ? T.accent   : T.border);
                   return (
                     <div
                       aria-hidden="true"
                       style={{
-                        width: s.recommended ? 18 : 13,
-                        height: s.recommended ? 18 : 13,
+                        width: size, height: size,
                         borderRadius: "50%",
-                        background: isDone ? T.known : (s.recommended ? T.accent : T.text),
+                        background: bg,
                         border: `2.5px solid ${T.bg}`,
-                        boxShadow: `0 0 0 1.5px ${isDone ? T.known : (s.recommended ? T.accent : T.border)}`,
+                        boxShadow: `0 0 0 1.5px ${ring}`,
                         flexShrink: 0,
                         position: "relative",
                         zIndex: 1,
@@ -1200,144 +1218,84 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   );
                 };
 
-                const makeCard = (s) => (
-                  <button
-                    className="sf-stop"
-                    onClick={() => goToWarmup(s)}
-                    style={{
-                      width: "100%",
-                      textAlign: "left",
-                      background: s.recommended ? T.surfaceWarm : T.surface,
-                      border: `${s.recommended ? "1.5px" : "1px"} solid ${
-                        s.recommended ? T.accent : T.border
-                      }`,
-                      borderRadius: T.card,
-                      padding: "20px 22px",
-                      cursor: "pointer",
-                      fontFamily: "inherit",
-                      boxShadow: T.shadowCard,
-                    }}
-                  >
-                    {s.recommended && (
-                      <div
-                        style={{
-                          ...OL,
-                          color: T.accent,
-                          letterSpacing: "0.10em",
-                          marginBottom: 10,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 5,
-                        }}
-                      >
-                        <Star size={11} />
-                        Start here
+                const makeCard = (s, isCurrent) => {
+                  const isDone = completions.has(s.id);
+                  return (
+                    <button
+                      className="sf-stop"
+                      onClick={() => goToWarmup(s)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        background:   isDone    ? T.knownTint   : (isCurrent ? T.surfaceWarm : T.surface),
+                        border:      `${(isDone || isCurrent) ? "1.5px" : "1px"} solid ${
+                                       isDone   ? T.known       : (isCurrent ? T.accent      : T.border)}`,
+                        borderRadius: T.card,
+                        padding:      "20px 22px",
+                        cursor:       "pointer",
+                        fontFamily:   "inherit",
+                        boxShadow:    T.shadowCard,
+                      }}
+                    >
+                      {/* State overline */}
+                      {isDone ? (
+                        <div style={{ ...OL, color: T.known, letterSpacing: "0.10em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+                          <Check size={11} /> Completed
+                        </div>
+                      ) : isCurrent ? (
+                        <div style={{ ...OL, color: T.accent, letterSpacing: "0.10em", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}>
+                          {s.recommended ? <><Star size={11} /> Start here</> : "Up next"}
+                        </div>
+                      ) : null}
+
+                      {/* Title */}
+                      <div style={{ fontSize: 17, fontWeight: 600, lineHeight: 1.2, marginBottom: 4, color: isDone ? T.known : T.text }}>
+                        {s.title}
                       </div>
-                    )}
-                    <div
-                      style={{
-                        fontSize: 17,
-                        fontWeight: 600,
-                        lineHeight: 1.2,
-                        marginBottom: 4,
-                        color: T.text,
-                      }}
-                    >
-                      {s.title}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: T.textSub,
-                        lineHeight: 1.4,
-                        marginBottom: 12,
-                      }}
-                    >
-                      {s.sub}
-                    </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 0 }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          ...OL,
-                          letterSpacing: "0.08em",
-                          color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub,
-                          background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border,
-                          padding: "4px 9px",
-                          borderRadius: T.pill,
-                        }}
-                      >
+
+                      {/* Sub-title */}
+                      <div style={{ fontSize: 13, color: T.textSub, lineHeight: 1.4, marginBottom: 12 }}>
+                        {s.sub}
+                      </div>
+
+                      {/* CEFR badge */}
+                      <span style={{ display: "inline-block", ...OL, letterSpacing: "0.08em", color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub, background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border, padding: "4px 9px", borderRadius: T.pill }}>
                         {s.level} · {CEFR_HINT[s.level]}
                       </span>
-                      {completions.has(s.id) && (
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4,
-                            ...OL,
-                            letterSpacing: "0.08em",
-                            color: T.known,
-                            background: T.knownTint,
-                            padding: "4px 9px",
-                            borderRadius: T.pill,
-                          }}
-                        >
-                          <Check size={10} /> Completed
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
+                    </button>
+                  );
+                };
 
                 return (
                   <div style={{ position: "relative" }}>
-                    {/* Vertical dashed path line */}
-                    <div
-                      aria-hidden="true"
-                      style={{
-                        position: "absolute",
-                        left: isMobile ? 15 : "50%",
-                        transform: isMobile ? "none" : "translateX(-50%)",
-                        top: 8,
-                        bottom: 8,
-                        width: 1,
-                        background: `repeating-linear-gradient(
-                          to bottom,
-                          ${T.border} 0px,
-                          ${T.border} 5px,
-                          transparent 5px,
-                          transparent 11px
-                        )`,
-                      }}
-                    />
+
+                    {/* Filled path segment — solid green up to current position */}
+                    {currentPct > 0 && (
+                      <div aria-hidden="true" style={{ position: "absolute", ...lineX, top: 0, height: `${currentPct}%`, width: 2, background: T.known, zIndex: 0 }} />
+                    )}
+
+                    {/* Dashed remaining path — from current position to end */}
+                    {currentPct < 100 && (
+                      <div aria-hidden="true" style={{
+                        position: "absolute", ...lineX,
+                        top: `${currentPct}%`, bottom: 0, width: 1, zIndex: 0,
+                        background: `repeating-linear-gradient(to bottom, ${T.border} 0px, ${T.border} 5px, transparent 5px, transparent 11px)`,
+                      }} />
+                    )}
 
                     {journey.map((s, i) => {
-                      const isLast = i === journey.length - 1;
-                      const cardLeft = i % 2 === 0;
+                      const isLast    = i === journey.length - 1;
+                      const cardLeft  = i % 2 === 0;
+                      const isCurrent = i === currentIdx;
 
                       /* Mobile: single column, line on left */
                       if (isMobile) {
                         return (
-                          <div
-                            key={s.id}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              marginBottom: isLast ? 0 : 20,
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: DOT_COL,
-                                flexShrink: 0,
-                                display: "flex",
-                                justifyContent: "center",
-                              }}
-                            >
-                              {makeDot(s)}
+                          <div key={s.id} style={{ display: "flex", alignItems: "center", marginBottom: isLast ? 0 : 20 }}>
+                            <div style={{ width: DOT_COL, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+                              {makeDot(s, isCurrent)}
                             </div>
-                            <div style={{ flex: 1 }}>{makeCard(s)}</div>
+                            <div style={{ flex: 1 }}>{makeCard(s, isCurrent)}</div>
                           </div>
                         );
                       }
@@ -1345,33 +1303,16 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       /* Desktop: zigzag */
                       const innerPad = DOT_COL / 2 + 14;
                       return (
-                        <div
-                          key={s.id}
-                          style={{ marginBottom: isLast ? 0 : 32 }}
-                        >
-                          <div
-                            style={{ display: "flex", alignItems: "center" }}
-                          >
-                            <div
-                              style={{ flex: 1, paddingRight: innerPad }}
-                            >
-                              {cardLeft ? makeCard(s) : null}
+                        <div key={s.id} style={{ marginBottom: isLast ? 0 : 32 }}>
+                          <div style={{ display: "flex", alignItems: "center" }}>
+                            <div style={{ flex: 1, paddingRight: innerPad }}>
+                              {cardLeft ? makeCard(s, isCurrent) : null}
                             </div>
-                            <div
-                              style={{
-                                width: DOT_COL,
-                                flexShrink: 0,
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
-                              {makeDot(s)}
+                            <div style={{ width: DOT_COL, flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center" }}>
+                              {makeDot(s, isCurrent)}
                             </div>
-                            <div
-                              style={{ flex: 1, paddingLeft: innerPad }}
-                            >
-                              {!cardLeft ? makeCard(s) : null}
+                            <div style={{ flex: 1, paddingLeft: innerPad }}>
+                              {!cardLeft ? makeCard(s, isCurrent) : null}
                             </div>
                           </div>
                         </div>
