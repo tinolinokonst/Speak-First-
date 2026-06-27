@@ -207,6 +207,11 @@ export default function App() {
   const [supported, setSupported] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 500);
   const [warmupPhrases, setWarmupPhrases] = useState({}); // { [scenarioId]: "loading" | null | phrase[] }
+  // Flashcard state — reset each time goToWarmup() is called
+  const [warmupIndex, setWarmupIndex] = useState(0);
+  const [warmupFlipped, setWarmupFlipped] = useState(false);
+  const [warmupPhase, setWarmupPhase] = useState("cards"); // "cards" | "summary"
+  const [warmupMarks, setWarmupMarks] = useState([]); // sparse array by card index: "known" | "learning"
 
   // ── Auth state
   const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
@@ -403,6 +408,10 @@ export default function App() {
   function goToWarmup(s) {
     setScenario(s);
     setScreen("warmup");
+    setWarmupIndex(0);
+    setWarmupFlipped(false);
+    setWarmupPhase("cards");
+    setWarmupMarks([]);
     if (!(s.id in warmupPhrases)) fetchWarmupPhrases(s);
   }
 
@@ -1300,182 +1309,248 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
           const isLoading = phrasesVal === "loading" || phrasesVal === undefined;
           const isError   = phrasesVal === null;
           const phraseList = Array.isArray(phrasesVal) ? phrasesVal : [];
+          const totalCards = phraseList.length;
+          const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+          function markAndAdvance(status) {
+            setWarmupMarks(prev => { const n = [...prev]; n[warmupIndex] = status; return n; });
+            setWarmupFlipped(false);
+            if (warmupIndex < totalCards - 1) {
+              setWarmupIndex(i => i + 1);
+            } else {
+              setWarmupPhase("summary");
+            }
+          }
+
+          const knownCount    = warmupMarks.filter(m => m === "known").length;
+          const learningCount = warmupMarks.filter(m => m === "learning").length;
+
+          const sharedHeader = (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+              <button
+                onClick={() => setScreen("home")}
+                style={{ background: "none", border: "none", cursor: "pointer", color: T.textSub, display: "flex", alignItems: "center", padding: 4 }}
+                aria-label="Back to scenarios"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <div style={{ ...OL, color: T.accent }}>Speak First</div>
+              <button
+                onClick={() => startScenario(scenario)}
+                style={{ background: "none", border: "none", color: T.textSub, fontFamily: "inherit", fontSize: 13, cursor: "pointer", padding: "4px 0" }}
+              >
+                Skip warm-up →
+              </button>
+            </div>
+          );
+
+          /* ── Summary phase ── */
+          if (warmupPhase === "summary") {
+            const stillLearning = phraseList.filter((_, i) => warmupMarks[i] === "learning");
+            const summaryMsg = knownCount === totalCards
+              ? `You knew all ${totalCards} — go straight in.`
+              : learningCount === totalCards
+              ? `${learningCount} to keep in mind — they'll click once you're talking.`
+              : `Knew ${knownCount} · still working on ${learningCount}.`;
+            return (
+              <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
+                {sharedHeader}
+                <div className="sf-fade-up">
+                  <div style={{ ...OL, color: T.textSub, marginBottom: 12 }}>{scenario.level} · {scenario.title}</div>
+                  <h1 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.018em", lineHeight: 1.2, margin: "0 0 8px", color: T.text }}>
+                    You're ready.
+                  </h1>
+                  <p style={{ fontSize: 15, color: T.textSub, lineHeight: 1.6, margin: "0 0 24px" }}>
+                    {summaryMsg}
+                  </p>
+                  {stillLearning.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                      {stillLearning.map((p, i) => (
+                        <div key={i} style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, boxShadow: T.shadowCard }}>
+                          <div>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: T.text }}>{p.spanish}</div>
+                            <div style={{ fontSize: 13, color: T.textSub, marginTop: 2 }}>{p.english}</div>
+                          </div>
+                          <button onClick={() => speak(p.spanish)} aria-label={`Hear "${p.spanish}"`} style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: T.pill, cursor: "pointer", color: T.textSub, display: "flex", alignItems: "center", padding: "6px 9px", flexShrink: 0 }}>
+                            <Volume2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <button
+                    onClick={() => startScenario(scenario)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: T.accent, color: "#fff", border: "none", borderRadius: T.pill, padding: "17px 24px", fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
+                  >
+                    Start conversation <ChevronRight size={18} />
+                  </button>
+                  <button
+                    onClick={() => { setWarmupIndex(0); setWarmupFlipped(false); setWarmupPhase("cards"); setWarmupMarks([]); }}
+                    style={{ background: "none", border: "none", color: T.textSub, fontFamily: "inherit", fontSize: 14, cursor: "pointer", padding: "8px 0", textAlign: "center" }}
+                  >
+                    ← Review again
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          /* ── Cards phase ── */
+          const card = phraseList[warmupIndex] || null;
+          const currentMark = warmupMarks[warmupIndex];
+
+          const cardFront = card && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); speak(card.spanish); }}
+                aria-label={`Hear "${card.spanish}"`}
+                style={{ background: "none", border: `1px solid ${T.border}`, borderRadius: T.pill, cursor: "pointer", color: T.textSub, display: "flex", alignItems: "center", padding: "7px 10px", marginBottom: 4 }}
+              >
+                <Volume2 size={16} />
+              </button>
+              <div style={{ fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center", lineHeight: 1.3 }}>
+                {card.spanish}
+              </div>
+              <div style={{ fontSize: 12, color: T.textSub, marginTop: 6 }}>tap to see translation</div>
+            </>
+          );
+
+          const cardBack = card && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, textTransform: "uppercase", letterSpacing: "0.1em" }}>meaning</div>
+              <div style={{ fontSize: 22, fontWeight: 600, color: T.text, textAlign: "center", lineHeight: 1.3 }}>
+                {card.english}
+              </div>
+              <div style={{ fontSize: 14, color: T.textSub, marginTop: 6 }}>{card.spanish}</div>
+            </>
+          );
+
           return (
             <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
+              {sharedHeader}
 
-              {/* Header */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 36,
-                }}
-              >
-                <button
-                  onClick={() => setScreen("home")}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: T.textSub,
-                    display: "flex",
-                    alignItems: "center",
-                    padding: 4,
-                  }}
-                  aria-label="Back to scenarios"
-                >
-                  <ArrowLeft size={18} />
-                </button>
-                <div style={{ ...OL, color: T.accent }}>Speak First</div>
-              </div>
+              <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>{scenario.level} · {scenario.title}</div>
 
-              {/* Heading + skip */}
-              <div className="sf-fade-up">
-                <div style={{ ...OL, color: T.textSub, marginBottom: 12 }}>
-                  {scenario.level} · {scenario.title}
-                </div>
-                <h1
-                  style={{
-                    fontSize: 26,
-                    fontWeight: 700,
-                    letterSpacing: "-0.018em",
-                    lineHeight: 1.2,
-                    margin: "0 0 10px",
-                    color: T.text,
-                  }}
-                >
-                  A few words before you start
-                </h1>
-                <p
-                  style={{
-                    fontSize: 15,
-                    lineHeight: 1.6,
-                    color: T.textSub,
-                    margin: "0 0 18px",
-                  }}
-                >
-                  No need to memorise these — just a quick look before you go in.
-                </p>
-
-                {/* Prominent skip — visible immediately, before phrases load */}
-                <button
-                  onClick={() => startScenario(scenario)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: T.accent,
-                    fontFamily: "inherit",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    padding: "4px 0",
-                    marginBottom: 32,
-                  }}
-                >
-                  Skip — start talking now →
-                </button>
-              </div>
-
-              {/* Loading */}
               {isLoading && (
-                <div style={{ color: T.textSub, fontSize: 14, padding: "8px 0 24px", lineHeight: 1.5 }}>
+                <div style={{ color: T.textSub, fontSize: 14, lineHeight: 1.6, padding: "8px 0 24px" }}>
                   Getting key phrases for this scenario…
                 </div>
               )}
-
-              {/* Error fallback */}
               {isError && (
-                <div style={{ color: T.textSub, fontSize: 14, padding: "8px 0 24px", lineHeight: 1.5 }}>
+                <div style={{ color: T.textSub, fontSize: 14, lineHeight: 1.6, padding: "8px 0 24px" }}>
                   Couldn't load phrases — you can still head right in.
                 </div>
               )}
 
-              {/* Phrase cards */}
-              {!isLoading && !isError && phraseList.length > 0 && (
-                <div
-                  className="sf-fade-up"
-                  style={{ display: "flex", flexDirection: "column", gap: 10, animationDelay: ".08s" }}
-                >
-                  {phraseList.map((p, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 14,
-                        background: T.surface,
-                        border: `1px solid ${T.border}`,
-                        borderRadius: T.card,
-                        padding: "14px 16px",
-                        boxShadow: T.shadowCard,
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: T.text, lineHeight: 1.3 }}>
-                          {p.spanish}
-                        </div>
-                        <div style={{ fontSize: 13, color: T.textSub, marginTop: 3, lineHeight: 1.3 }}>
-                          {p.english}
-                        </div>
+              {!isLoading && !isError && totalCards > 0 && (
+                <div className="sf-fade-up" style={{ animationDelay: ".08s" }}>
+
+                  {/* Progress */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, color: T.textSub }}>{warmupIndex + 1} of {totalCards}</div>
+                    {currentMark && (
+                      <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.04em", color: currentMark === "known" ? T.support : T.accent }}>
+                        {currentMark === "known" ? "✓ Know it" : "Still learning"}
                       </div>
-                      <button
-                        onClick={() => speak(p.spanish)}
-                        aria-label={`Hear "${p.spanish}"`}
+                    )}
+                  </div>
+
+                  {/* Flip card */}
+                  {reducedMotion ? (
+                    /* Reduced motion: instant toggle, no animation */
+                    <div
+                      onClick={() => setWarmupFlipped(f => !f)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setWarmupFlipped(f => !f); }}}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={warmupFlipped ? `Translation shown: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
+                      style={{ background: warmupFlipped ? T.surfaceWarm : T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, cursor: "pointer", marginBottom: 20, outline: "none" }}
+                    >
+                      {warmupFlipped ? cardBack : cardFront}
+                    </div>
+                  ) : (
+                    /* CSS 3D flip */
+                    <div
+                      onClick={() => setWarmupFlipped(f => !f)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setWarmupFlipped(f => !f); }}}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={warmupFlipped ? `Translation shown: ${card?.english}` : `${card?.spanish} — tap to reveal meaning`}
+                      style={{ perspective: "900px", WebkitPerspective: "900px", cursor: "pointer", marginBottom: 20, outline: "none" }}
+                    >
+                      <div
                         style={{
-                          background: "none",
-                          border: `1px solid ${T.border}`,
-                          borderRadius: T.pill,
-                          cursor: "pointer",
-                          color: T.textSub,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "7px 10px",
-                          flexShrink: 0,
-                          transition: "border-color .12s ease, color .12s ease",
+                          display: "grid",
+                          gridTemplateColumns: "1fr",
+                          width: "100%",
+                          transformStyle: "preserve-3d",
+                          WebkitTransformStyle: "preserve-3d",
+                          transition: "transform 0.38s ease",
+                          transform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
+                          WebkitTransform: `rotateY(${warmupFlipped ? 180 : 0}deg)`,
                         }}
                       >
-                        <Volume2 size={15} />
-                      </button>
+                        {/* Front face */}
+                        <div style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", background: T.surface, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                          {cardFront}
+                        </div>
+                        {/* Back face */}
+                        <div style={{ gridColumn: 1, gridRow: 1, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)", WebkitTransform: "rotateY(180deg)", background: T.surfaceWarm, border: `1px solid ${T.border}`, borderRadius: T.card, boxShadow: T.shadowCard, padding: "32px 20px", minHeight: 160, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                          {cardBack}
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Mark buttons */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+                    <button
+                      onClick={() => markAndAdvance("known")}
+                      style={{ flex: 1, padding: "13px 8px", background: currentMark === "known" ? T.support : T.surface, color: currentMark === "known" ? "#fff" : T.text, border: `1px solid ${currentMark === "known" ? T.support : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "background .15s, border-color .15s, color .15s" }}
+                    >
+                      ✓ Know it
+                    </button>
+                    <button
+                      onClick={() => markAndAdvance("learning")}
+                      style={{ flex: 1, padding: "13px 8px", background: currentMark === "learning" ? T.accentTint : T.surface, color: currentMark === "learning" ? T.accent : T.text, border: `1px solid ${currentMark === "learning" ? T.accent : T.border}`, borderRadius: T.card, fontFamily: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "background .15s, border-color .15s, color .15s" }}
+                    >
+                      Still learning
+                    </button>
+                  </div>
+
+                  {/* Prev / Next navigation */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <button
+                      onClick={() => { setWarmupIndex(i => Math.max(0, i - 1)); setWarmupFlipped(false); }}
+                      disabled={warmupIndex === 0}
+                      style={{ background: "none", border: "none", color: warmupIndex === 0 ? T.border : T.textSub, cursor: warmupIndex === 0 ? "default" : "pointer", fontFamily: "inherit", fontSize: 14, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
+                    >
+                      <ArrowLeft size={14} /> Prev
+                    </button>
+                    {warmupIndex < totalCards - 1 ? (
+                      <button
+                        onClick={() => { setWarmupIndex(i => i + 1); setWarmupFlipped(false); }}
+                        style={{ background: "none", border: "none", color: T.textSub, cursor: "pointer", fontFamily: "inherit", fontSize: 14, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        Next <ChevronRight size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setWarmupPhase("summary")}
+                        style={{ background: "none", border: "none", color: T.accent, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, padding: "4px 0", display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        Finish <ChevronRight size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
-
-              {/* Start conversation CTA */}
-              <div
-                className="sf-fade-up"
-                style={{ marginTop: 36, animationDelay: ".16s" }}
-              >
-                <button
-                  onClick={() => startScenario(scenario)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 8,
-                    background: T.accent,
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: T.pill,
-                    padding: "17px 24px",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    fontFamily: "inherit",
-                    cursor: "pointer",
-                    transition: "opacity .15s ease",
-                  }}
-                >
-                  Start conversation
-                  <ChevronRight size={18} />
-                </button>
-              </div>
-
             </div>
           );
         })()}
+
 
         {/* ── CHAT ───────────────────────────────── */}
         {screen === "chat" && scenario && (
