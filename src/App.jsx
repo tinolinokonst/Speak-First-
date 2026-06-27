@@ -172,6 +172,7 @@ export default function App() {
 
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
+  const pendingSpeakRef = useRef(null); // tracks any deferred voiceschanged listener so it can be cancelled
 
   useEffect(() => {
     const SR =
@@ -249,7 +250,17 @@ export default function App() {
     synth.cancel(); // clear any in-progress utterance to prevent overlap / cutoff
     if (synth.paused) synth.resume(); // un-stall if tab was backgrounded
 
+    // synth.cancel() stops queued audio but does NOT remove voiceschanged listeners.
+    // Without this removal, a stale deferred doSpeak from a prior speak() call can
+    // still fire and queue the old text right after the new utterance starts — causing
+    // the audio to say more words than are shown in the message bubble.
+    if (pendingSpeakRef.current) {
+      synth.removeEventListener("voiceschanged", pendingSpeakRef.current);
+      pendingSpeakRef.current = null;
+    }
+
     const doSpeak = () => {
+      pendingSpeakRef.current = null;
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "es-ES";
       u.rate = 0.95;
@@ -264,6 +275,7 @@ export default function App() {
     if (synth.getVoices().length > 0) {
       doSpeak();
     } else {
+      pendingSpeakRef.current = doSpeak;
       synth.addEventListener("voiceschanged", doSpeak, { once: true });
     }
   }
