@@ -45,13 +45,16 @@ export default function AuthScreen({ onSuccess }) {
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({ email, password });
+        const { data, error: err } = await supabase.auth.signUp({ email, password });
         if (err) throw err;
-        setCheckEmail(true);
+        // If Supabase returns a session immediately, email confirmation is disabled
+        // and onAuthStateChange SIGNED_IN will navigate us into the app automatically.
+        // If there's no session, email confirmation is required — show the prompt.
+        if (!data.session) setCheckEmail(true);
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
         if (err) throw err;
-        // onAuthStateChange in App.jsx will fire and advance the screen.
+        // onAuthStateChange SIGNED_IN in App.jsx navigates to home.
       }
     } catch (err) {
       setError(friendlyError(err.message));

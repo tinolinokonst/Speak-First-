@@ -188,22 +188,36 @@ export default function App() {
 
   // ── Bootstrap auth session and listen for changes ───────────────────────
   useEffect(() => {
-    // Read any existing session immediately (covers page reload and OAuth redirect).
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    // Guard: if Supabase env vars aren't configured (e.g. local dev without .env),
+    // skip the auth handshake entirely and render the app as logged-out immediately.
+    // In production, both vars are always present via Vercel env settings.
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
       setAuthReady(true);
-    });
+      return;
+    }
 
-    // Keep user state in sync for sign-in, sign-out, and token refresh events.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    // getSession() resolves with the current session (or null) — this sets authReady
+    // so the app never blocks indefinitely on a blank screen.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
         setUser(session?.user ?? null);
-        // After a successful OAuth redirect, advance past the auth screen.
-        if (session?.user && screen === "auth") setScreen("home");
+        setAuthReady(true);
+      })
+      .catch(() => setAuthReady(true));
+
+    // onAuthStateChange handles every subsequent state change.
+    // SIGNED_IN covers: email/password login, OAuth redirect back to the app.
+    // Functional update reads the *current* screen without a stale closure —
+    // this was the root cause of the original bug (screen was always "landing").
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+        if (event === "SIGNED_IN") {
+          setScreen(prev => (prev === "auth" || prev === "landing") ? "home" : prev);
+        }
       }
     );
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSignOut() {
