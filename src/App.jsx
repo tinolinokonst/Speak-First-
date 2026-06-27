@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Languages,
   Lightbulb,
+  LogOut,
   MapPin,
   Mic,
   RotateCcw,
@@ -15,6 +16,8 @@ import {
   Volume2,
   X,
 } from "lucide-react";
+import { supabase } from "./supabase.js";
+import AuthScreen from "./AuthScreen.jsx";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -141,7 +144,7 @@ const OL = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | home | chat | feedback
+  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -150,6 +153,10 @@ export default function App() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [supported, setSupported] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 500);
+
+  // ── Auth state
+  const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
+  const [authReady, setAuthReady] = useState(false); // true once we've checked for an existing session
 
   // ── In-context comprehension support (in-memory cache, reset per scenario)
   const [translations, setTranslations] = useState({});
@@ -178,6 +185,41 @@ export default function App() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // ── Bootstrap auth session and listen for changes ───────────────────────
+  useEffect(() => {
+    // Read any existing session immediately (covers page reload and OAuth redirect).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+
+    // Keep user state in sync for sign-in, sign-out, and token refresh events.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        // After a successful OAuth redirect, advance past the auth screen.
+        if (session?.user && screen === "auth") setScreen("home");
+      }
+    );
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSignOut() {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    await supabase.auth.signOut();
+    setScreen("landing");
+  }
+
+  // Called when the "Start practicing" CTA is tapped on the landing page.
+  function handleStartPracticing() {
+    if (user) {
+      setScreen("home");
+    } else {
+      setScreen("auth");
+    }
+  }
 
   // Hardened Web Speech API wrapper.
   // Fixes: (1) voices load async — wait for voiceschanged before speaking;
@@ -461,6 +503,18 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
   const userTurns = messages.filter((m) => m.role === "user").length;
 
+  // Don't flash any content while we check for an existing session.
+  if (!authReady) return null;
+
+  // Auth screen replaces everything else (full-page, outside the main column).
+  if (screen === "auth") {
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.sans }}>
+        <AuthScreen onSuccess={() => setScreen("home")} />
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -517,7 +571,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
             {/* Primary CTA */}
             <button
-              onClick={() => setScreen("home")}
+              onClick={handleStartPracticing}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -754,7 +808,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               }}
             >
               <button
-                onClick={() => setScreen("home")}
+                onClick={handleStartPracticing}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -782,22 +836,46 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
         {screen === "home" && (
           <div className="sf-screen" style={{ paddingTop: 60, paddingBottom: 80 }}>
 
-            {/* Wordmark — tap to go back to landing */}
-            <button
-              onClick={() => setScreen("landing")}
-              style={{
-                ...OL,
-                color: T.accent,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: 0,
-                fontFamily: "inherit",
-                letterSpacing: "0.12em",
-              }}
-            >
-              Speak first
-            </button>
+            {/* Top row: wordmark + account controls */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <button
+                onClick={() => setScreen("landing")}
+                style={{
+                  ...OL,
+                  color: T.accent,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontFamily: "inherit",
+                  letterSpacing: "0.12em",
+                }}
+              >
+                Speak first
+              </button>
+
+              {user && (
+                <button
+                  onClick={handleSignOut}
+                  title="Sign out"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: T.textSub,
+                    fontSize: 13,
+                    fontFamily: "inherit",
+                    padding: "4px 0",
+                  }}
+                >
+                  <LogOut size={14} />
+                  Sign out
+                </button>
+              )}
+            </div>
 
             {/* Hero */}
             <h1
