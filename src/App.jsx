@@ -20,6 +20,7 @@ import {
 import { supabase } from "./supabase.js";
 import AuthScreen from "./AuthScreen.jsx";
 import SettingsPage from "./SettingsPage.jsx";
+import WhyPage from "./WhyPage.jsx";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -146,7 +147,7 @@ const OL = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback | settings
+  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback | settings | why
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -607,6 +608,24 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               Start practicing
               <ChevronRight size={18} />
             </button>
+            <button
+              onClick={() => setScreen("why")}
+              style={{
+                display: "block",
+                marginTop: 16,
+                background: "none",
+                border: "none",
+                color: T.textSub,
+                fontFamily: "inherit",
+                fontSize: 14,
+                cursor: "pointer",
+                padding: "4px 0",
+                textDecoration: "underline",
+                textDecorationColor: "rgba(107,101,96,.3)",
+              }}
+            >
+              Why we built this →
+            </button>
             </div>
 
             {/* ── Why Speak First? ──────────────────────── */}
@@ -870,15 +889,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 Speak first
               </button>
 
-              {user && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <button
-                  onClick={() => setScreen("settings")}
-                  title="Account settings"
-                  aria-label="Account settings"
+                  onClick={() => setScreen("why")}
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -888,9 +902,30 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     padding: "4px 0",
                   }}
                 >
-                  <Settings size={16} />
+                  Why
                 </button>
-              )}
+                {user && (
+                  <button
+                    onClick={() => setScreen("settings")}
+                    title="Account settings"
+                    aria-label="Account settings"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: T.textSub,
+                      fontSize: 13,
+                      fontFamily: "inherit",
+                      padding: "4px 0",
+                    }}
+                  >
+                    <Settings size={16} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Hero */}
@@ -1750,6 +1785,14 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             onBack={() => setScreen("home")}
             onSignOut={handleSignOut}
             onDeleted={() => setScreen("landing")}
+          />
+        )}
+
+        {/* ── WHY PAGE ──────────────────────────── */}
+        {screen === "why" && (
+          <WhyPage
+            onBack={() => setScreen(user ? "home" : "landing")}
+            onStartPracticing={handleStartPracticing}
           />
         )}
       </div>
