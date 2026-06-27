@@ -46,6 +46,16 @@ const SCENARIOS = [
     difficulty: 2,
   },
   {
+    id: "introductions",
+    title: "Introducing yourself",
+    sub: "Social event, Spain",
+    persona:
+      "You are Sofía, a friendly person meeting someone new at a casual social event in Spain. You only speak Spanish. Make small talk: ask their name, where they're from, what they do. Keep it simple, warm, and encouraging.",
+    opener: "¡Hola! Creo que no nos conocemos. ¿Cómo te llamas?",
+    level: "A1",
+    difficulty: 3,
+  },
+  {
     id: "directions",
     title: "Asking for directions",
     sub: "Street corner, Seville",
@@ -53,7 +63,7 @@ const SCENARIOS = [
       "You are Pablo, a relaxed local on the street in Seville. You only speak Spanish. A tourist stops you to ask how to get somewhere. Give simple directions and be patient and encouraging.",
     opener: "¿Sí? ¿En qué te puedo ayudar?",
     level: "A2",
-    difficulty: 3,
+    difficulty: 4,
   },
   {
     id: "friend",
@@ -63,7 +73,17 @@ const SCENARIOS = [
       "You are Lucía, an old friend catching up over coffee. You only speak Spanish. Be casual, curious, and chatty about each other's week.",
     opener: "¡Ey! Cuánto tiempo. ¿Qué tal todo?",
     level: "A2",
-    difficulty: 4,
+    difficulty: 5,
+  },
+  {
+    id: "clothing",
+    title: "Shopping for clothes",
+    sub: "Clothing shop, Madrid",
+    persona:
+      "You are Marco, a helpful clothing shop assistant in Madrid. You only speak Spanish. Help the customer find items, sizes, and colors, and handle trying on and paying. Keep it friendly and patient.",
+    opener: "¡Buenas! ¿Buscas algo en particular?",
+    level: "A2",
+    difficulty: 6,
   },
   {
     id: "doctor",
@@ -73,7 +93,7 @@ const SCENARIOS = [
       "You are Dr. Ramírez, a kind general doctor in a clinic in Mexico City. You only speak Spanish. The patient has come in not feeling well. Ask about their symptoms, how long they've felt this way, and reassure them. Stay calm and professional.",
     opener: "Buenos días, pase y siéntese. Cuénteme, ¿qué le pasa?",
     level: "B1",
-    difficulty: 5,
+    difficulty: 7,
   },
   {
     id: "interview",
@@ -83,7 +103,27 @@ const SCENARIOS = [
       "You are Diego, a friendly hiring manager interviewing a candidate for a junior marketing role in Bogotá. You only speak Spanish. Ask normal interview questions, one at a time.",
     opener: "Buenas. Gracias por venir. Cuéntame un poco sobre ti.",
     level: "B1",
-    difficulty: 6,
+    difficulty: 8,
+  },
+  {
+    id: "apartment",
+    title: "Renting an apartment",
+    sub: "Flat viewing, Valencia",
+    persona:
+      "You are Lucía Fernández, a landlord showing an apartment to a prospective tenant in Valencia. You only speak Spanish. Discuss the apartment, rent, deposit, contract terms, and answer the tenant's questions. Be professional and realistic, willing to negotiate a little.",
+    opener: "Bienvenido. Pase, le enseño el piso. ¿Qué le gustaría saber?",
+    level: "B2",
+    difficulty: 9,
+  },
+  {
+    id: "complaint",
+    title: "Making a complaint",
+    sub: "Phone call, Mexico City",
+    persona:
+      "You are Andrés, a customer service representative at a phone/internet company in Mexico City. You only speak Spanish. The customer has a problem with their service or bill. Listen, ask clarifying questions, and try to resolve it professionally. Be polite but realistic — don't instantly give them everything they want.",
+    opener: "Gracias por llamar. ¿En qué puedo ayudarle hoy?",
+    level: "B2",
+    difficulty: 10,
   },
   {
     id: "debate",
@@ -93,7 +133,17 @@ const SCENARIOS = [
       "You are Elena, a sharp but respectful friend who loves a good debate over coffee. You only speak Spanish. Engage the learner in a friendly disagreement about an everyday topic (e.g. city vs country living, technology, food). Push back on their points to make them defend their view, but stay warm and never hostile.",
     opener: "Vale, te lo discuto: creo que vivir en la ciudad es mucho mejor que en el campo. ¿No estás de acuerdo?",
     level: "C1",
-    difficulty: 7,
+    difficulty: 11,
+  },
+  {
+    id: "deeper",
+    title: "A deeper conversation",
+    sub: "Long coffee, anywhere",
+    persona:
+      "You are Teresa, a thoughtful friend who enjoys discussing bigger ideas over a long coffee. You only speak Spanish, at a natural native pace using idioms and nuance. Engage the learner on an abstract topic (e.g. how technology is changing relationships, what makes a good life, whether cities or nature shape us more). Ask probing follow-up questions, express subtle opinions, and use natural expressions — treat them as a capable speaker.",
+    opener: "Oye, llevo días dándole vueltas a una idea y quiero saber qué piensas: ¿crees que la tecnología nos acerca o en realidad nos aísla más?",
+    level: "C2",
+    difficulty: 12,
   },
 ];
 
