@@ -173,6 +173,7 @@ export default function App() {
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
   const pendingSpeakRef = useRef(null); // tracks any deferred voiceschanged listener so it can be cancelled
+  const speakVersionRef = useRef(0);   // incremented on every speak() call; stale callbacks check this and bail
 
   useEffect(() => {
     const SR =
@@ -226,7 +227,7 @@ export default function App() {
   }, []);
 
   async function handleSignOut() {
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    stopAllSpeech();
     await supabase.auth.signOut();
     setScreen("landing");
   }
@@ -240,47 +241,63 @@ export default function App() {
     }
   }
 
+  // Cancels all in-progress and queued speech, increments the version counter so
+  // any doSpeak callback already scheduled (via setTimeout or voiceschanged) will
+  // see a stale version and bail, and clears the pending listener reference.
+  function stopAllSpeech() {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    speakVersionRef.current++;
+    if (pendingSpeakRef.current) {
+      window.speechSynthesis.removeEventListener("voiceschanged", pendingSpeakRef.current);
+      pendingSpeakRef.current = null;
+    }
+  }
+
   // Hardened Web Speech API wrapper.
   // Fixes: (1) voices load async — wait for voiceschanged before speaking;
   //        (2) engine stall on backgrounded tabs — resume() if paused;
-  //        (3) missing Spanish voice — fall back to system default rather than fail silently.
+  //        (3) missing Spanish voice — fall back to system default rather than fail silently;
+  //        (4) Chrome cancel() is async — version guard + 50ms delay prevent stale/overlapping audio.
   function speak(text) {
     if (!window.speechSynthesis) return;
     const synth = window.speechSynthesis;
-    synth.cancel(); // clear any in-progress utterance to prevent overlap / cutoff
-    if (synth.paused) synth.resume(); // un-stall if tab was backgrounded
+    synth.cancel();
+    if (synth.paused) synth.resume();
 
-    // synth.cancel() stops queued audio but does NOT remove voiceschanged listeners.
-    // Without this removal, a stale deferred doSpeak from a prior speak() call can
-    // still fire and queue the old text right after the new utterance starts — causing
-    // the audio to say more words than are shown in the message bubble.
     if (pendingSpeakRef.current) {
       synth.removeEventListener("voiceschanged", pendingSpeakRef.current);
       pendingSpeakRef.current = null;
     }
 
+    // Stamp this speak() call; any older doSpeak callbacks will see a mismatch and exit.
+    const version = ++speakVersionRef.current;
+
     const doSpeak = () => {
+      if (speakVersionRef.current !== version) return;
       pendingSpeakRef.current = null;
       const u = new SpeechSynthesisUtterance(text);
       u.lang = "es-ES";
       u.rate = 0.95;
-      // Prefer an explicit Spanish voice; fall back to system default gracefully.
       const voices = synth.getVoices();
       const spanish = voices.find((v) => v.lang.startsWith("es"));
       if (spanish) u.voice = spanish;
       synth.speak(u);
     };
 
-    // Voice list is often empty on first call in Chrome — defer until ready.
     if (synth.getVoices().length > 0) {
-      doSpeak();
+      // 50ms lets Chrome's async cancel() take effect before the new utterance
+      // starts, preventing the cancelled audio from briefly stacking with it.
+      setTimeout(doSpeak, 50);
     } else {
+      // Voice list is often empty on first call in Chrome — defer until ready.
       pendingSpeakRef.current = doSpeak;
       synth.addEventListener("voiceschanged", doSpeak, { once: true });
     }
   }
 
   function startScenario(s) {
+    stopAllSpeech();
     setScenario(s);
     setMessages([{ role: "tutor", text: s.opener }]);
     setFeedback(null);
@@ -389,7 +406,7 @@ Rules:
       recogRef.current && recogRef.current.stop();
       return;
     }
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    stopAllSpeech();
     const r = new SR();
     r.lang = "es-ES";
     r.interimResults = false;
@@ -408,7 +425,7 @@ Rules:
   // ── Coach call. Runs at the end on the full transcript. THIS is where
   // correction lives. Top 3 fixes only, so it builds confidence not despair.
   async function endAndReview() {
-    window.speechSynthesis && window.speechSynthesis.cancel();
+    stopAllSpeech();
     setFeedbackLoading(true);
     setScreen("feedback");
     const transcript = messages
@@ -1456,7 +1473,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             >
               <button
                 onClick={() => {
-                  window.speechSynthesis && window.speechSynthesis.cancel();
+                  stopAllSpeech();
                   setScreen("home");
                 }}
                 style={{
