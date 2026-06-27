@@ -1018,36 +1018,6 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               )}
             </div>
 
-            {/* Hero */}
-            <h1
-              style={{
-                fontSize: 38,
-                lineHeight: 1.08,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                margin: "14px 0 16px",
-                color: T.text,
-              }}
-            >
-              Have a real conversation.
-              <br />
-              Get corrected after.
-            </h1>
-
-            {/* Subhead */}
-            <p
-              style={{
-                fontSize: 16,
-                lineHeight: 1.6,
-                color: T.textSub,
-                margin: 0,
-                maxWidth: 400,
-              }}
-            >
-              No interruptions, no red marks mid-sentence. Talk your way
-              through a real situation, then see the three things worth fixing.
-            </p>
-
             {/* Browser warning */}
             {!supported && (
               <div
@@ -1067,7 +1037,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             )}
 
             {/* ── Journey arc ─────────────────────────── */}
-            <div style={{ marginTop: 52 }}>
+            <div style={{ marginTop: 28 }}>
 
               {/* Section overline */}
               <div style={{ ...OL, color: T.textSub, marginBottom: 32 }}>
