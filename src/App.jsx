@@ -231,6 +231,8 @@ export default function App() {
   const [warmupMarks, setWarmupMarks] = useState([]); // sparse array by card index: "known" | "learning"
   const [warmupDeck, setWarmupDeck] = useState(null); // null = full phraseList; array = review subset
 
+  const [completions, setCompletions] = useState(new Set()); // Set of scenario IDs the user has confirmed complete
+
   // ── Auth state
   const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
   const [authReady, setAuthReady] = useState(false); // true once we've checked for an existing session
@@ -298,6 +300,33 @@ export default function App() {
     );
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── Completions ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    const uid = user?.id ?? null;
+    if (uid) loadCompletions(uid);
+    else setCompletions(new Set());
+  }, [user]);
+
+  async function loadCompletions(uid) {
+    const { data } = await supabase
+      .from("completions")
+      .select("scenario_id")
+      .eq("user_id", uid);
+    if (data) setCompletions(new Set(data.map(r => r.scenario_id)));
+  }
+
+  async function markComplete(scenarioId) {
+    if (!user?.id) return;
+    await supabase
+      .from("completions")
+      .upsert(
+        { user_id: user.id, scenario_id: scenarioId },
+        { onConflict: "user_id,scenario_id", ignoreDuplicates: true }
+      );
+    setCompletions(prev => new Set([...prev, scenarioId]));
+    setScreen("home");
+  }
 
   async function handleSignOut() {
     stopAllSpeech();
@@ -1156,24 +1185,25 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 // Vertical line centers inside it on desktop; fixed 15px on mobile.
                 const DOT_COL = 32;
 
-                const makeDot = (s) => (
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      width: s.recommended ? 18 : 13,
-                      height: s.recommended ? 18 : 13,
-                      borderRadius: "50%",
-                      background: s.recommended ? T.accent : T.text,
-                      border: `2.5px solid ${T.bg}`,
-                      boxShadow: `0 0 0 1.5px ${
-                        s.recommended ? T.accent : T.border
-                      }`,
-                      flexShrink: 0,
-                      position: "relative",
-                      zIndex: 1,
-                    }}
-                  />
-                );
+                const makeDot = (s) => {
+                  const isDone = completions.has(s.id);
+                  return (
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        width: s.recommended ? 18 : 13,
+                        height: s.recommended ? 18 : 13,
+                        borderRadius: "50%",
+                        background: isDone ? T.known : (s.recommended ? T.accent : T.text),
+                        border: `2.5px solid ${T.bg}`,
+                        boxShadow: `0 0 0 1.5px ${isDone ? T.known : (s.recommended ? T.accent : T.border)}`,
+                        flexShrink: 0,
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                    />
+                  );
+                };
 
                 const makeCard = (s) => (
                   <button
@@ -1230,19 +1260,38 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     >
                       {s.sub}
                     </div>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        ...OL,
-                        letterSpacing: "0.08em",
-                        color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub,
-                        background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border,
-                        padding: "4px 9px",
-                        borderRadius: T.pill,
-                      }}
-                    >
-                      {s.level} · {CEFR_HINT[s.level]}
-                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 0 }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          ...OL,
+                          letterSpacing: "0.08em",
+                          color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub,
+                          background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border,
+                          padding: "4px 9px",
+                          borderRadius: T.pill,
+                        }}
+                      >
+                        {s.level} · {CEFR_HINT[s.level]}
+                      </span>
+                      {completions.has(s.id) && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            ...OL,
+                            letterSpacing: "0.08em",
+                            color: T.known,
+                            background: T.knownTint,
+                            padding: "4px 9px",
+                            borderRadius: T.pill,
+                          }}
+                        >
+                          <Check size={10} /> Completed
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
 
@@ -2163,8 +2212,55 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </>
             )}
 
-            {/* CTAs — primary repeats same scenario, secondary picks another */}
+            {/* CTAs */}
             <div style={{ marginTop: 36, display: "flex", flexDirection: "column", gap: 12 }}>
+
+              {/* Mark as complete — only for logged-in users */}
+              {user && (
+                completions.has(scenario.id) ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      background: T.knownTint,
+                      border: `1.5px solid ${T.known}`,
+                      borderRadius: T.pill,
+                      padding: "14px 24px",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: T.known,
+                    }}
+                  >
+                    <Check size={16} /> Completed
+                  </div>
+                ) : (
+                  <button
+                    className="sf-btn-primary"
+                    onClick={() => markComplete(scenario.id)}
+                    style={{
+                      width: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      background: T.known,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: T.pill,
+                      padding: "17px 24px",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <Check size={17} /> Mark as complete
+                  </button>
+                )
+              )}
+
               <button
                 onClick={() => startScenario(scenario)}
                 style={{
@@ -2173,16 +2269,15 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  background: T.accent,
-                  color: "#fff",
-                  border: "none",
+                  background: user ? "none" : T.accent,
+                  color: user ? T.text : "#fff",
+                  border: user ? `1.5px solid ${T.border}` : "none",
                   borderRadius: T.pill,
-                  padding: "17px 24px",
+                  padding: "15px 24px",
                   fontSize: 16,
-                  fontWeight: 700,
+                  fontWeight: user ? 600 : 700,
                   fontFamily: "inherit",
                   cursor: "pointer",
-                  transition: "opacity .15s ease",
                 }}
               >
                 <RotateCcw size={17} />
