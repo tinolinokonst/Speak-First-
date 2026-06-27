@@ -147,6 +147,89 @@ button:focus-visible {
   border-radius: 18px;
 }
 
+/* ─── Landing page sticky nav ──────────────────────────────────────────────
+   Centred within the column; gains glass background after 30px of scroll.
+   Uses negative margin + equal padding so the background bleeds to edges. */
+.sf-landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  margin: 0 -20px;
+  background: transparent;
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.sf-nav--scrolled {
+  background: rgba(251, 248, 244, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(237, 232, 226, 0.9);
+}
+
+/* ─── Nav text link ────────────────────────────────────────────────────────
+   Smooth colour shift on hover; no decoration. */
+.sf-nav-link {
+  transition: color .14s ease;
+}
+.sf-nav-link:hover {
+  color: #1E1B16 !important;
+}
+
+/* ─── Nav primary CTA (coral pill) ────────────────────────────────────────
+   Lifts and brightens on hover; depresses on active. */
+.sf-nav-cta {
+  transition: transform .13s ease, box-shadow .13s ease, filter .13s ease;
+}
+.sf-nav-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(232, 101, 78, .28);
+  filter: brightness(1.06);
+}
+.sf-nav-cta:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ─── Hero primary CTA ─────────────────────────────────────────────────────
+   More dramatic lift on hover to make the main action feel inviting. */
+.sf-cta-hero {
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.sf-cta-hero:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 8px 28px rgba(232, 101, 78, .34);
+  filter: brightness(1.05);
+}
+.sf-cta-hero:active {
+  transform: translateY(0) scale(0.99);
+  box-shadow: 0 3px 10px rgba(232, 101, 78, .18);
+  filter: brightness(0.97);
+}
+
+/* ─── Scenario tiles (landing page grid) ──────────────────────────────────
+   Subtle lift + accent border on hover to signal visual interactivity. */
+.sf-scenario-tile {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.sf-scenario-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(30, 27, 22, .09);
+  border-color: #E8654E !important;
+}
+
+/* ─── How-it-works step cards ──────────────────────────────────────────────
+   Gentle lift — sequential steps feel calm, not bouncy. */
+.sf-step {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.sf-step:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(30, 27, 22, .07);
+}
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────
    Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
@@ -168,10 +251,17 @@ button:focus-visible {
   .sf-btn-primary,
   .sf-btn-ghost,
   .sf-btn-mark,
-  .sf-flashcard {
+  .sf-flashcard,
+  .sf-landing-nav,
+  .sf-nav-cta,
+  .sf-nav-link,
+  .sf-cta-hero,
+  .sf-scenario-tile,
+  .sf-step {
     transition: none !important;
     transform: none !important;
     box-shadow: none !important;
+    filter: none !important;
   }
   button {
     transition: none !important;

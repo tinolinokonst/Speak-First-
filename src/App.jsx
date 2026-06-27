@@ -213,6 +213,368 @@ const LEVEL_BADGE = {
   C2: { text: "#3B4ABB", bg: "#ECEFFE" },
 };
 
+// ── IntersectionObserver scroll-reveal hook ──────────────────────────────────
+// Returns [ref, visible]. When skip=true (prefers-reduced-motion), visible
+// is immediately true and no observer is created.
+function useReveal(threshold, skip) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(!!skip);
+  useEffect(() => {
+    if (skip || !ref.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
+      { threshold: threshold ?? 0.15 }
+    );
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [skip, threshold]);
+  return [ref, visible];
+}
+
+// ── Landing page ─────────────────────────────────────────────────────────────
+function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const [navScrolled, setNavScrolled] = useState(false);
+  const [scenariosRef, scenariosVisible] = useReveal(0.06, reducedMotion);
+  const [stepsRef,     stepsVisible]     = useReveal(0.08, reducedMotion);
+  const [contrastRef,  contrastVisible]  = useReveal(0.08, reducedMotion);
+  const [reassureRef,  reassureVisible]  = useReveal(0.2,  reducedMotion);
+  const [bottomRef,    bottomVisible]    = useReveal(0.3,  reducedMotion);
+
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const ctaText   = user ? "Go to your scenarios" : "Start practicing";
+  const ctaAction = user ? onDashboard : onStartPracticing;
+
+  // Returns inline reveal styles; no-ops when reducedMotion is on.
+  const rs = (visible, delay = 0) =>
+    reducedMotion ? {} : {
+      opacity:          visible ? 1 : 0,
+      transform:        visible ? "translateY(0)" : "translateY(20px)",
+      transition:       "opacity .48s ease, transform .48s ease",
+      transitionDelay:  `${delay}s`,
+    };
+
+  return (
+    <div style={{ paddingBottom: 100 }}>
+
+      {/* ── Sticky nav ────────────────────────────────── */}
+      <nav className={`sf-landing-nav${navScrolled ? " sf-nav--scrolled" : ""}`}>
+        <div style={{ ...OL, color: T.accent }}>Speak First</div>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 16 }}>
+          {!user && (
+            <button
+              className="sf-nav-link"
+              onClick={onWhy}
+              style={{
+                background: "none", border: "none", color: T.textSub,
+                fontFamily: "inherit", fontSize: isMobile ? 13 : 14,
+                cursor: "pointer", padding: "4px 0", whiteSpace: "nowrap",
+              }}
+            >
+              {isMobile ? "Why" : "Why Speak First"}
+            </button>
+          )}
+          {user ? (
+            <button
+              onClick={onDashboard}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: T.surface, color: T.text, border: `1px solid ${T.border}`,
+                borderRadius: T.pill, padding: isMobile ? "9px 14px" : "10px 18px",
+                fontSize: isMobile ? 13 : 14, fontWeight: 600,
+                fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              <ArrowLeft size={14} />
+              {isMobile ? "Dashboard" : "Back to dashboard"}
+            </button>
+          ) : (
+            <button
+              className="sf-nav-cta"
+              onClick={onStartPracticing}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: T.accent, color: "#fff", border: "none",
+                borderRadius: T.pill, padding: isMobile ? "9px 14px" : "10px 18px",
+                fontSize: isMobile ? 13 : 14, fontWeight: 700,
+                fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              {isMobile ? "Start" : "Start practicing"}
+              <ChevronRight size={14} />
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* ── Hero ─────────────────────────────────────── */}
+      <section style={{ paddingTop: 44, paddingBottom: 8 }}>
+        <h1
+          className="sf-fade-up"
+          style={{
+            fontSize: isMobile ? 38 : 50,
+            lineHeight: 1.05,
+            fontWeight: 700,
+            letterSpacing: "-0.028em",
+            margin: "0 0 22px",
+            color: T.text,
+          }}
+        >
+          Speak.<br />
+          Make mistakes.<br />
+          Get better.
+        </h1>
+        <p
+          className="sf-fade-up"
+          style={{
+            animationDelay: ".10s",
+            fontSize: 17,
+            lineHeight: 1.65,
+            color: T.textSub,
+            margin: "0 0 36px",
+            maxWidth: 420,
+          }}
+        >
+          Your AI conversation partner never interrupts or corrects you mid-sentence.
+          Say whatever Spanish you can — then see the three things most worth fixing.
+        </p>
+        <button
+          className="sf-cta-hero sf-fade-up"
+          onClick={ctaAction}
+          style={{
+            animationDelay: ".18s",
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: T.accent, color: "#fff", border: "none",
+            borderRadius: T.pill, padding: "17px 30px",
+            fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+          }}
+        >
+          {ctaText}
+          <ChevronRight size={18} />
+        </button>
+      </section>
+
+      {/* ── What you practise ────────────────────────── */}
+      <section style={{ marginTop: 80 }} ref={scenariosRef}>
+        <div style={{ ...rs(scenariosVisible, 0), ...OL, color: T.textSub, marginBottom: 8 }}>
+          What you practise
+        </div>
+        <p style={{
+          ...rs(scenariosVisible, 0.07),
+          fontSize: 15, lineHeight: 1.6, color: T.textSub, margin: "0 0 22px",
+        }}>
+          Twelve real situations — from beginner small talk to advanced debates. Each one is a full conversation, not a drill.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
+          {SCENARIOS.map((s, i) => (
+            <div
+              key={s.id}
+              className="sf-scenario-tile"
+              style={{
+                ...rs(scenariosVisible, i * 0.028),
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.card,
+                padding: "14px 15px",
+                boxShadow: T.shadowCard,
+              }}
+            >
+              <span
+                style={{
+                  ...OL,
+                  letterSpacing: "0.08em",
+                  color: (LEVEL_BADGE[s.level] || {}).text ?? T.textSub,
+                  background: (LEVEL_BADGE[s.level] || {}).bg ?? T.border,
+                  padding: "2px 8px",
+                  borderRadius: T.pill,
+                  display: "inline-block",
+                  marginBottom: 8,
+                }}
+              >
+                {s.level}
+              </span>
+              <div style={{ fontSize: 13, fontWeight: 600, color: T.text, lineHeight: 1.3, marginBottom: 2 }}>
+                {s.title}
+              </div>
+              <div style={{ fontSize: 11, color: T.textSub, lineHeight: 1.4 }}>
+                {s.sub}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── How it works ─────────────────────────────── */}
+      <section style={{ marginTop: 72 }} ref={stepsRef}>
+        <div style={{ ...rs(stepsVisible, 0), ...OL, color: T.textSub, marginBottom: 20 }}>
+          How it works
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[
+            {
+              icon: <MapPin size={20} color={T.accent} />,
+              tileBg: T.accentTint,
+              title: "Pick a real situation",
+              body: "Choose from twelve real scenarios — order at a café, navigate a doctor's appointment, or practise for a job interview.",
+            },
+            {
+              icon: <Mic size={20} color={T.accent} />,
+              tileBg: T.accentTint,
+              title: "Have the conversation out loud",
+              body: "The AI partner speaks Spanish. You reply with whatever you've got. No corrections mid-sentence, no interruptions.",
+            },
+            {
+              icon: <BookOpen size={20} color={T.support} />,
+              tileBg: T.supportTint,
+              title: "Get your end-of-session coaching",
+              body: "After you finish, see the three most important things to fix — focused feedback, not a list of every mistake.",
+            },
+          ].map(({ icon, tileBg, title, body }, i) => (
+            <div
+              key={title}
+              className="sf-step"
+              style={{
+                ...rs(stepsVisible, i * 0.1),
+                background: T.surface,
+                border: `1px solid ${T.border}`,
+                borderRadius: T.card,
+                padding: "20px 22px",
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 16,
+                boxShadow: T.shadowCard,
+              }}
+            >
+              <div
+                style={{
+                  width: 44, height: 44, borderRadius: 13,
+                  background: tileBg, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                {icon}
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: T.text, marginBottom: 4, lineHeight: 1.3 }}>
+                  {title}
+                </div>
+                <div style={{ fontSize: 14, lineHeight: 1.55, color: T.textSub }}>
+                  {body}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── What makes it different ──────────────────── */}
+      <section style={{ marginTop: 72 }} ref={contrastRef}>
+        <div style={{ ...rs(contrastVisible, 0), ...OL, color: T.textSub, marginBottom: 20 }}>
+          What makes it different
+        </div>
+        <div
+          style={{
+            ...rs(contrastVisible, 0.07),
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: T.card,
+            boxShadow: T.shadowCard,
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ display: "flex", background: T.bg, borderBottom: `1px solid ${T.border}` }}>
+            <div style={{ flex: 1, padding: "11px 16px", ...OL, color: T.textSub, letterSpacing: "0.08em" }}>
+              Other apps
+            </div>
+            <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
+            <div style={{ flex: 1, padding: "11px 16px", ...OL, color: T.text, letterSpacing: "0.08em" }}>
+              Speak First
+            </div>
+          </div>
+          {[
+            ["Drills and tap exercises",  "Real spoken conversations"],
+            ["Corrects you mid-sentence", "Never interrupts you"],
+            ["You tap, not talk",         "You speak the whole time"],
+            ["Scores and streaks",        "3 fixes worth knowing"],
+          ].map(([left, right], i) => (
+            <div
+              key={i}
+              style={{
+                ...rs(contrastVisible, 0.12 + i * 0.07),
+                display: "flex",
+                borderTop: `1px solid ${T.border}`,
+              }}
+            >
+              <div style={{ flex: 1, padding: "13px 16px", display: "flex", alignItems: "flex-start", gap: 7, fontSize: 13, lineHeight: 1.5, color: T.textSub }}>
+                <X size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+                {left}
+              </div>
+              <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
+              <div style={{ flex: 1, padding: "13px 16px", display: "flex", alignItems: "flex-start", gap: 7, fontSize: 13, lineHeight: 1.5, color: T.text }}>
+                <Check size={12} color={T.support} style={{ marginTop: 2, flexShrink: 0 }} />
+                {right}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Reassurance ──────────────────────────────── */}
+      <div ref={reassureRef} style={{ marginTop: 44 }}>
+        <div
+          style={{
+            ...rs(reassureVisible, 0),
+            background: T.surfaceWarm,
+            border: `1px solid ${T.border}`,
+            borderRadius: T.card,
+            padding: "24px 26px",
+            fontSize: 15,
+            lineHeight: 1.7,
+            color: T.text,
+          }}
+        >
+          Speaking a new language feels exposed. This is a low-pressure space to practise — the AI partner understands even broken Spanish, and you'll never be judged or corrected mid-sentence.
+        </div>
+      </div>
+
+      {/* ── Bottom CTA ───────────────────────────────── */}
+      <div
+        ref={bottomRef}
+        style={{ marginTop: 72, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}
+      >
+        <div style={{ ...rs(bottomVisible, 0), ...OL, color: T.textSub, marginBottom: 16 }}>
+          Ready to start speaking?
+        </div>
+        <button
+          className="sf-cta-hero"
+          onClick={ctaAction}
+          style={{
+            ...rs(bottomVisible, 0.08),
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: T.accent, color: "#fff", border: "none",
+            borderRadius: T.pill, padding: "17px 32px",
+            fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+          }}
+        >
+          {ctaText}
+          <ChevronRight size={18} />
+        </button>
+        {!user && (
+          <p style={{ ...rs(bottomVisible, 0.14), fontSize: 13, color: T.textSub, marginTop: 12 }}>
+            Free to start.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [screen, setScreen] = useState("landing"); // landing | auth | home | warmup | chat | feedback | settings | why
   const [scenario, setScenario] = useState(null);
@@ -730,380 +1092,13 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── LANDING ─────────────────────────────── */}
         {screen === "landing" && (
-          <div style={{ paddingBottom: 88 }}>
-
-            {/* ── Top nav ─────────────────────────────── */}
-            <nav
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingTop: 20,
-                paddingBottom: 20,
-                marginBottom: 44,
-              }}
-            >
-              <div style={{ ...OL, color: T.accent }}>Speak First</div>
-              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 16 }}>
-                {!user && (
-                  <button
-                    onClick={() => setScreen("why")}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: T.textSub,
-                      fontFamily: "inherit",
-                      fontSize: isMobile ? 13 : 14,
-                      cursor: "pointer",
-                      padding: "4px 0",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isMobile ? "Why" : "Why Speak First"}
-                  </button>
-                )}
-                {user ? (
-                  <button
-                    onClick={() => setScreen("home")}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: T.surface,
-                      color: T.text,
-                      border: `1px solid ${T.border}`,
-                      borderRadius: T.pill,
-                      padding: isMobile ? "9px 14px" : "10px 18px",
-                      fontSize: isMobile ? 13 : 14,
-                      fontWeight: 600,
-                      fontFamily: "inherit",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <ArrowLeft size={14} />
-                    {isMobile ? "Dashboard" : "Back to dashboard"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStartPracticing}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: T.accent,
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: T.pill,
-                      padding: isMobile ? "9px 14px" : "10px 18px",
-                      fontSize: isMobile ? 13 : 14,
-                      fontWeight: 700,
-                      fontFamily: "inherit",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isMobile ? "Start" : "Start practicing"}
-                    <ChevronRight size={14} />
-                  </button>
-                )}
-              </div>
-            </nav>
-
-            <div className="sf-fade-up">
-
-            {/* Hero headline */}
-            <h1
-              style={{
-                fontSize: isMobile ? 36 : 44,
-                lineHeight: 1.07,
-                fontWeight: 700,
-                letterSpacing: "-0.025em",
-                margin: "0 0 20px",
-                color: T.text,
-              }}
-            >
-              Speak.<br />
-              Make mistakes.<br />
-              Get better.
-            </h1>
-
-            {/* Subhead */}
-            <p
-              style={{
-                fontSize: 17,
-                lineHeight: 1.65,
-                color: T.textSub,
-                margin: "0 0 36px",
-                maxWidth: 400,
-              }}
-            >
-              Your AI conversation partner never interrupts or corrects you
-              mid-sentence. Say whatever Spanish you can — then see the three
-              things most worth fixing.
-            </p>
-
-            {/* Primary CTA */}
-            <button
-              onClick={user ? () => setScreen("home") : handleStartPracticing}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                background: T.accent,
-                color: "#fff",
-                border: "none",
-                borderRadius: T.pill,
-                padding: "16px 28px",
-                fontSize: 16,
-                fontWeight: 700,
-                fontFamily: "inherit",
-                cursor: "pointer",
-                transition: "opacity .15s ease",
-              }}
-            >
-              {user ? "Go to your scenarios" : "Start practicing"}
-              <ChevronRight size={18} />
-            </button>
-            </div>
-
-            {/* ── Why Speak First? ──────────────────────── */}
-            <div className="sf-fade-up" style={{ marginTop: 72, animationDelay: ".1s" }}>
-              <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
-                Why Speak First?
-              </div>
-
-              {/* Contrast card */}
-              <div
-                style={{
-                  background: T.surface,
-                  border: `1px solid ${T.border}`,
-                  borderRadius: T.card,
-                  boxShadow: T.shadowCard,
-                  overflow: "hidden",
-                }}
-              >
-                {/* Column headers */}
-                <div
-                  style={{
-                    display: "flex",
-                    background: T.bg,
-                    borderBottom: `1px solid ${T.border}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      flex: 1,
-                      padding: "11px 16px",
-                      ...OL,
-                      color: T.textSub,
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    Other apps
-                  </div>
-                  <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
-                  <div
-                    style={{
-                      flex: 1,
-                      padding: "11px 16px",
-                      ...OL,
-                      color: T.text,
-                      letterSpacing: "0.08em",
-                    }}
-                  >
-                    Speak First
-                  </div>
-                </div>
-
-                {/* Comparison rows */}
-                {[
-                  ["Drills and tap exercises", "Real spoken conversations"],
-                  ["Corrects you mid-sentence", "Never interrupts you"],
-                  ["You tap, not talk", "You speak the whole time"],
-                  ["Scores and streaks", "3 fixes worth knowing"],
-                ].map(([left, right], idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      display: "flex",
-                      borderTop: `1px solid ${T.border}`,
-                    }}
-                  >
-                    <div
-                      style={{
-                        flex: 1,
-                        padding: "13px 16px",
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 7,
-                        fontSize: 13,
-                        lineHeight: 1.5,
-                        color: T.textSub,
-                      }}
-                    >
-                      <X size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-                      {left}
-                    </div>
-                    <div style={{ width: 1, background: T.border, flexShrink: 0 }} />
-                    <div
-                      style={{
-                        flex: 1,
-                        padding: "13px 16px",
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 7,
-                        fontSize: 13,
-                        lineHeight: 1.5,
-                        color: T.text,
-                      }}
-                    >
-                      <Check
-                        size={12}
-                        color={T.support}
-                        style={{ marginTop: 2, flexShrink: 0 }}
-                      />
-                      {right}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── How it works ──────────────────────────── */}
-            <div className="sf-fade-up" style={{ marginTop: 64, animationDelay: ".18s" }}>
-              <div style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
-                How it works
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {[
-                  {
-                    icon: <MapPin size={20} color={T.accent} />,
-                    tileBg: T.accentTint,
-                    title: "Pick a real situation",
-                    body: "Choose from real scenarios — order at a café, catch up with a friend, or practise for a job interview.",
-                  },
-                  {
-                    icon: <Mic size={20} color={T.accent} />,
-                    tileBg: T.accentTint,
-                    title: "Have the conversation out loud",
-                    body: "The AI partner speaks Spanish. You reply with whatever you've got. No corrections, no interruptions.",
-                  },
-                  {
-                    icon: <BookOpen size={20} color={T.support} />,
-                    tileBg: T.supportTint,
-                    title: "Get your end-of-session coaching",
-                    body: "After you finish, see the 3 most important things to fix — focused feedback, not a list of every mistake.",
-                  },
-                ].map(({ icon, tileBg, title, body }, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      background: T.surface,
-                      border: `1px solid ${T.border}`,
-                      borderRadius: T.card,
-                      padding: "18px 20px",
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 16,
-                      boxShadow: T.shadowCard,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 12,
-                        background: tileBg,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {icon}
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 600,
-                          color: T.text,
-                          marginBottom: 4,
-                          lineHeight: 1.3,
-                        }}
-                      >
-                        {title}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          lineHeight: 1.55,
-                          color: T.textSub,
-                        }}
-                      >
-                        {body}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Reassurance ───────────────────────────── */}
-            <div
-              className="sf-fade-up"
-              style={{
-                marginTop: 40,
-                animationDelay: ".25s",
-                background: T.surfaceWarm,
-                border: `1px solid ${T.border}`,
-                borderRadius: T.card,
-                padding: "22px 24px",
-                fontSize: 15,
-                lineHeight: 1.65,
-                color: T.text,
-              }}
-            >
-              Speaking a new language feels exposed. This is a low-pressure
-              space to practise — the AI partner understands even broken
-              Spanish, and you'll never be judged or corrected mid-sentence.
-            </div>
-
-            {/* ── Bottom CTA ────────────────────────────── */}
-            <div
-              className="sf-fade-up"
-              style={{
-                marginTop: 56,
-                animationDelay: ".32s",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
-              <button
-                onClick={user ? () => setScreen("home") : handleStartPracticing}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  background: T.accent,
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: T.pill,
-                  padding: "16px 28px",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  fontFamily: "inherit",
-                  cursor: "pointer",
-                  transition: "opacity .15s ease",
-                }}
-              >
-                {user ? "Go to your scenarios" : "Start practicing"}
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
+          <LandingPage
+            user={user}
+            isMobile={isMobile}
+            onStartPracticing={handleStartPracticing}
+            onWhy={() => setScreen("why")}
+            onDashboard={() => setScreen("home")}
+          />
         )}
 
         {/* ── HOME ───────────────────────────────── */}
