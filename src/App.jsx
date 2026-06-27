@@ -716,42 +716,68 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             >
               <div style={{ ...OL, color: T.accent }}>Speak First</div>
               <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 16 }}>
-                <button
-                  onClick={() => setScreen("why")}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: T.textSub,
-                    fontFamily: "inherit",
-                    fontSize: isMobile ? 13 : 14,
-                    cursor: "pointer",
-                    padding: "4px 0",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {isMobile ? "Why" : "Why Speak First"}
-                </button>
-                <button
-                  onClick={handleStartPracticing}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    background: T.accent,
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: T.pill,
-                    padding: isMobile ? "9px 14px" : "10px 18px",
-                    fontSize: isMobile ? 13 : 14,
-                    fontWeight: 700,
-                    fontFamily: "inherit",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {isMobile ? "Start" : "Start practicing"}
-                  <ChevronRight size={14} />
-                </button>
+                {!user && (
+                  <button
+                    onClick={() => setScreen("why")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: T.textSub,
+                      fontFamily: "inherit",
+                      fontSize: isMobile ? 13 : 14,
+                      cursor: "pointer",
+                      padding: "4px 0",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isMobile ? "Why" : "Why Speak First"}
+                  </button>
+                )}
+                {user ? (
+                  <button
+                    onClick={() => setScreen("home")}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: T.surface,
+                      color: T.text,
+                      border: `1px solid ${T.border}`,
+                      borderRadius: T.pill,
+                      padding: isMobile ? "9px 14px" : "10px 18px",
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <ArrowLeft size={14} />
+                    {isMobile ? "Dashboard" : "Back to dashboard"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartPracticing}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: T.accent,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: T.pill,
+                      padding: isMobile ? "9px 14px" : "10px 18px",
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 700,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {isMobile ? "Start" : "Start practicing"}
+                    <ChevronRight size={14} />
+                  </button>
+                )}
               </div>
             </nav>
 
@@ -790,7 +816,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
             {/* Primary CTA */}
             <button
-              onClick={handleStartPracticing}
+              onClick={user ? () => setScreen("home") : handleStartPracticing}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -807,7 +833,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 transition: "opacity .15s ease",
               }}
             >
-              Start practicing
+              {user ? "Go to your scenarios" : "Start practicing"}
               <ChevronRight size={18} />
             </button>
             </div>
@@ -1027,7 +1053,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               }}
             >
               <button
-                onClick={handleStartPracticing}
+                onClick={user ? () => setScreen("home") : handleStartPracticing}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -1044,7 +1070,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   transition: "opacity .15s ease",
                 }}
               >
-                Start practicing
+                {user ? "Go to your scenarios" : "Start practicing"}
                 <ChevronRight size={18} />
               </button>
             </div>
