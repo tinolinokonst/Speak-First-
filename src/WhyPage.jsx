@@ -7,7 +7,6 @@ import {
   Target,
 } from "lucide-react";
 
-// Design tokens — kept in sync with App.jsx.
 const T = {
   bg:          "#FBF8F4",
   surface:     "#FFFFFF",
@@ -30,40 +29,31 @@ const PILLARS = [
   {
     icon: <MessageSquare size={22} color={T.accent} />,
     tileBg: T.accentTint,
-    heading: "Speaking, not just vocabulary",
-    belief:
-      "You learn a language by speaking it — under real pressure, in real situations. " +
-      "There is no shortcut that skips the part where you open your mouth and try.",
-    contrast:
-      "Most popular apps train you to recognise and translate words in isolation. " +
-      "You can finish hundreds of lessons and still freeze the moment you have to actually talk. " +
-      "Speak First puts you in a real spoken conversation from the very first session.",
+    heading: "Speaking practice, not vocabulary drills",
+    body:
+      "Speaking and vocabulary are different skills. You can know hundreds of Spanish words " +
+      "and still freeze when someone actually talks to you. Speak First is a spoken conversation " +
+      "app — you reply out loud, the AI responds in Spanish, and you keep going. " +
+      "Feedback on what's worth fixing comes at the end, not mid-sentence.",
   },
   {
     icon: <Unlock size={22} color={T.support} />,
     tileBg: T.supportTint,
-    heading: "Learn as much as you want — no lockouts",
-    belief:
-      "Mistakes are how you learn. You should be able to make as many as you need, " +
-      "whenever you need to, without anything stopping you.",
-    contrast:
-      "Many apps use a \"hearts\" or \"energy\" system that limits how many mistakes " +
-      "you can make before locking you out until you wait, pay, or grind through easier content. " +
-      "We don't do that. Practice freely; mess up freely. There's nothing to run out of.",
+    heading: "No energy bar, no lockouts",
+    body:
+      "There's no limit on how many sessions you can do or how many mistakes you can make. " +
+      "Practice as much as you want. We left out the mechanic where running out of attempts " +
+      "locks you out until you wait or pay — it seemed backwards for a practice tool.",
   },
   {
     icon: <Target size={22} color={T.accent} />,
     tileBg: T.accentTint,
-    heading: "Built for learning, not for keeping you hooked",
-    belief:
-      "Success means you can hold a real conversation — not that you opened the app " +
-      "fifty days in a row. Those are very different things.",
-    contrast:
-      "A lot of language apps are designed around engagement metrics: streaks, " +
-      "notifications, daily loops engineered to bring you back regardless of whether " +
-      "you're actually learning. We'd rather optimise for the moment you realise you can " +
-      "hold a real conversation in Spanish. We're not trying to be a game you can't put down. " +
-      "We're trying to make you someone who can speak.",
+    heading: "No streaks, no daily targets",
+    body:
+      "There are no streaks to protect, no daily goals, no push reminders. " +
+      "If you practice a lot one week and skip the next, that's fine. " +
+      "We'd rather you actually learn to speak than rack up a streak — " +
+      "so we built for the former and left out the latter.",
   },
 ];
 
@@ -83,74 +73,60 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       <div className="sf-fade-up">
         <h1
           style={{
-            fontSize: 36,
-            lineHeight: 1.1,
+            fontSize: 34,
+            lineHeight: 1.12,
             fontWeight: 700,
-            letterSpacing: "-0.022em",
-            margin: "0 0 18px",
+            letterSpacing: "-0.02em",
+            margin: "0 0 16px",
             color: T.text,
           }}
         >
-          We believe you learn a language<br />
-          by speaking it.
+          We built Speak First<br />around one idea.
         </h1>
         <p
           style={{
             fontSize: 17,
             lineHeight: 1.7,
             color: T.textSub,
-            margin: "0 0 0",
+            margin: 0,
             maxWidth: 440,
           }}
         >
-          Not by studying it. Not by translating flash cards. By actually talking —
-          imperfectly, out loud, in situations that feel real. Everything about Speak
-          First follows from that belief.
+          You get better at speaking a language by speaking it — not just by studying
+          vocabulary or translating sentences. Those help, but they don't directly train
+          you to hold a conversation. So we made an app where you actually speak.
         </p>
       </div>
 
       {/* ── Divider ── */}
       <div
         className="sf-fade-up"
-        style={{
-          height: 1,
-          background: T.border,
-          margin: "44px 0",
-          animationDelay: ".06s",
-        }}
+        style={{ height: 1, background: T.border, margin: "40px 0", animationDelay: ".06s" }}
       />
 
       {/* ── Three pillars ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-        {PILLARS.map(({ icon, tileBg, heading, belief, contrast }, i) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {PILLARS.map(({ icon, tileBg, heading, body }, i) => (
           <div
             key={i}
             className="sf-fade-up"
-            style={{ animationDelay: `${0.1 + i * 0.08}s` }}
+            style={{ animationDelay: `${0.1 + i * 0.07}s` }}
           >
             <div
               style={{
                 background: T.surface,
                 border: `1px solid ${T.border}`,
                 borderRadius: T.card,
-                padding: "24px 24px",
+                padding: "22px 22px",
                 boxShadow: T.shadowCard,
               }}
             >
-              {/* Icon tile + heading row */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 16,
-                  marginBottom: 16,
-                }}
-              >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 12 }}>
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 11,
                     background: tileBg,
                     display: "flex",
                     alignItems: "center",
@@ -163,45 +139,28 @@ export default function WhyPage({ onBack, onStartPracticing }) {
                 </div>
                 <h2
                   style={{
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: 700,
                     lineHeight: 1.3,
                     margin: 0,
                     color: T.text,
                     letterSpacing: "-0.01em",
-                    paddingTop: 4,
+                    paddingTop: 5,
                   }}
                 >
                   {heading}
                 </h2>
               </div>
-
-              {/* Belief statement */}
               <p
                 style={{
-                  fontSize: 15,
-                  lineHeight: 1.65,
-                  color: T.text,
-                  margin: "0 0 12px",
-                }}
-              >
-                {belief}
-              </p>
-
-              {/* Contrast — quieter, inset */}
-              <div
-                style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   lineHeight: 1.65,
                   color: T.textSub,
-                  background: T.surfaceWarm,
-                  borderRadius: 12,
-                  padding: "12px 14px",
-                  borderLeft: `3px solid ${T.border}`,
+                  margin: 0,
                 }}
               >
-                {contrast}
-              </div>
+                {body}
+              </p>
             </div>
           </div>
         ))}
@@ -211,33 +170,22 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       <div
         className="sf-fade-up"
         style={{
-          marginTop: 48,
+          marginTop: 32,
           background: T.surfaceWarm,
           border: `1px solid ${T.border}`,
           borderRadius: T.card,
-          padding: "24px 26px",
-          animationDelay: ".34s",
+          padding: "20px 22px",
+          animationDelay: ".31s",
         }}
       >
-        <p
-          style={{
-            fontSize: 16,
-            lineHeight: 1.7,
-            color: T.text,
-            margin: 0,
-          }}
-        >
-          Learning to speak a new language is uncomfortable — and that's exactly the point.
-          Speak First gives you a low-pressure place to be uncomfortable, make mistakes,
-          and get a little better every time.
+        <p style={{ fontSize: 15, lineHeight: 1.65, color: T.text, margin: 0 }}>
+          It's a low-stakes place to practice. Say what you can, get three things worth
+          fixing, and try again.
         </p>
       </div>
 
       {/* ── CTA ── */}
-      <div
-        className="sf-fade-up"
-        style={{ marginTop: 40, animationDelay: ".40s" }}
-      >
+      <div className="sf-fade-up" style={{ marginTop: 36, animationDelay: ".38s" }}>
         <button
           onClick={onStartPracticing}
           style={{

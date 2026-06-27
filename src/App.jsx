@@ -547,13 +547,61 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── LANDING ─────────────────────────────── */}
         {screen === "landing" && (
-          <div style={{ paddingTop: 64, paddingBottom: 88 }}>
-            <div className="sf-fade-up">
+          <div style={{ paddingBottom: 88 }}>
 
-            {/* Wordmark */}
-            <div style={{ ...OL, color: T.accent, marginBottom: 28 }}>
-              Speak First
-            </div>
+            {/* ── Top nav ─────────────────────────────── */}
+            <nav
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                paddingTop: 20,
+                paddingBottom: 20,
+                marginBottom: 44,
+              }}
+            >
+              <div style={{ ...OL, color: T.accent }}>Speak First</div>
+              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 16 }}>
+                <button
+                  onClick={() => setScreen("why")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: T.textSub,
+                    fontFamily: "inherit",
+                    fontSize: isMobile ? 13 : 14,
+                    cursor: "pointer",
+                    padding: "4px 0",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {isMobile ? "Why" : "Why Speak First"}
+                </button>
+                <button
+                  onClick={handleStartPracticing}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: T.accent,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: T.pill,
+                    padding: isMobile ? "9px 14px" : "10px 18px",
+                    fontSize: isMobile ? 13 : 14,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {isMobile ? "Start" : "Start practicing"}
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </nav>
+
+            <div className="sf-fade-up">
 
             {/* Hero headline */}
             <h1
@@ -607,24 +655,6 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             >
               Start practicing
               <ChevronRight size={18} />
-            </button>
-            <button
-              onClick={() => setScreen("why")}
-              style={{
-                display: "block",
-                marginTop: 16,
-                background: "none",
-                border: "none",
-                color: T.textSub,
-                fontFamily: "inherit",
-                fontSize: 14,
-                cursor: "pointer",
-                padding: "4px 0",
-                textDecoration: "underline",
-                textDecorationColor: "rgba(107,101,96,.3)",
-              }}
-            >
-              Why we built this →
             </button>
             </div>
 
@@ -889,10 +919,15 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                 Speak first
               </button>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {user && (
                 <button
-                  onClick={() => setScreen("why")}
+                  onClick={() => setScreen("settings")}
+                  title="Account settings"
+                  aria-label="Account settings"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -902,30 +937,9 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     padding: "4px 0",
                   }}
                 >
-                  Why
+                  <Settings size={16} />
                 </button>
-                {user && (
-                  <button
-                    onClick={() => setScreen("settings")}
-                    title="Account settings"
-                    aria-label="Account settings"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: T.textSub,
-                      fontSize: 13,
-                      fontFamily: "inherit",
-                      padding: "4px 0",
-                    }}
-                  >
-                    <Settings size={16} />
-                  </button>
-                )}
-              </div>
+              )}
             </div>
 
             {/* Hero */}
