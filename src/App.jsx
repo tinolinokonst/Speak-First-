@@ -11,6 +11,7 @@ import {
   MapPin,
   Mic,
   RotateCcw,
+  Settings,
   Square,
   Star,
   Volume2,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { supabase } from "./supabase.js";
 import AuthScreen from "./AuthScreen.jsx";
+import SettingsPage from "./SettingsPage.jsx";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -144,7 +146,7 @@ const OL = {
 };
 
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback
+  const [screen, setScreen] = useState("landing"); // landing | auth | home | chat | feedback | settings
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -870,8 +872,9 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
               {user && (
                 <button
-                  onClick={handleSignOut}
-                  title="Sign out"
+                  onClick={() => setScreen("settings")}
+                  title="Account settings"
+                  aria-label="Account settings"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -885,8 +888,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     padding: "4px 0",
                   }}
                 >
-                  <LogOut size={14} />
-                  Sign out
+                  <Settings size={16} />
                 </button>
               )}
             </div>
@@ -1739,6 +1741,16 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               </button>
             </div>
           </div>
+        )}
+
+        {/* ── SETTINGS ───────────────────────────── */}
+        {screen === "settings" && user && (
+          <SettingsPage
+            user={user}
+            onBack={() => setScreen("home")}
+            onSignOut={handleSignOut}
+            onDeleted={() => setScreen("landing")}
+          />
         )}
       </div>
     </div>
