@@ -306,8 +306,8 @@ export default function SettingsPage({ user, onBack, onSignOut, onDeleted }) {
         </button>
       </Section>
 
-      {/* ── 4. Danger zone */}
-      <Section icon={<ShieldAlert size={15} />} title="Danger zone">
+      {/* ── 4. Delete account */}
+      <Section icon={<ShieldAlert size={15} />} title="Delete account">
         <DeleteAccountSection user={user} onDeleted={onDeleted} />
       </Section>
 
