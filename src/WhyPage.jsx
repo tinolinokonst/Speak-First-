@@ -59,7 +59,7 @@ const PILLARS = [
 
 export default function WhyPage({ onBack, onStartPracticing }) {
   return (
-    <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 88 }}>
+    <div className="sf-screen" style={{ paddingTop: 64, paddingBottom: 96 }}>
 
       {/* ── Top nav ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 44 }}>
@@ -73,11 +73,11 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       <div className="sf-fade-up">
         <h1
           style={{
-            fontSize: 34,
-            lineHeight: 1.12,
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            margin: "0 0 16px",
+            fontSize: 44,
+            lineHeight: 1.06,
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            margin: "0 0 20px",
             color: T.text,
           }}
         >
@@ -117,7 +117,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
                 background: T.surface,
                 border: `1px solid ${T.border}`,
                 borderRadius: T.card,
-                padding: "22px 22px",
+                padding: "28px 28px",
                 boxShadow: T.shadowCard,
               }}
             >
@@ -139,13 +139,13 @@ export default function WhyPage({ onBack, onStartPracticing }) {
                 </div>
                 <h2
                   style={{
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: 700,
                     lineHeight: 1.3,
                     margin: 0,
                     color: T.text,
-                    letterSpacing: "-0.01em",
-                    paddingTop: 5,
+                    letterSpacing: "-0.015em",
+                    paddingTop: 4,
                   }}
                 >
                   {heading}
@@ -153,8 +153,8 @@ export default function WhyPage({ onBack, onStartPracticing }) {
               </div>
               <p
                 style={{
-                  fontSize: 14,
-                  lineHeight: 1.65,
+                  fontSize: 15,
+                  lineHeight: 1.7,
                   color: T.textSub,
                   margin: 0,
                 }}
@@ -170,11 +170,11 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       <div
         className="sf-fade-up"
         style={{
-          marginTop: 32,
+          marginTop: 40,
           background: T.surfaceWarm,
           border: `1px solid ${T.border}`,
           borderRadius: T.card,
-          padding: "20px 22px",
+          padding: "26px 28px",
           animationDelay: ".31s",
         }}
       >
@@ -187,6 +187,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       {/* ── CTA ── */}
       <div className="sf-fade-up" style={{ marginTop: 36, animationDelay: ".38s" }}>
         <button
+          className="sf-cta-hero"
           onClick={onStartPracticing}
           style={{
             display: "inline-flex",
@@ -196,12 +197,11 @@ export default function WhyPage({ onBack, onStartPracticing }) {
             color: "#fff",
             border: "none",
             borderRadius: T.pill,
-            padding: "16px 28px",
-            fontSize: 16,
+            padding: "17px 32px",
+            fontSize: 17,
             fontWeight: 700,
             fontFamily: T.sans,
             cursor: "pointer",
-            transition: "opacity .15s ease",
           }}
         >
           Start practicing

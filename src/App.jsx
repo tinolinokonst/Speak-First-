@@ -1103,7 +1103,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
 
         {/* ── HOME ───────────────────────────────── */}
         {screen === "home" && (
-          <div className="sf-screen" style={{ paddingTop: 60, paddingBottom: 80 }}>
+          <div className="sf-screen" style={{ paddingTop: 72, paddingBottom: 88 }}>
 
             {/* Top row: wordmark + account controls */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1167,9 +1167,21 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             {/* ── Journey arc ─────────────────────────── */}
             <div style={{ marginTop: 28 }}>
 
-              {/* Section overline */}
-              <div style={{ ...OL, color: T.textSub, marginBottom: 32 }}>
-                Your journey
+              {/* Section overline + completion stat */}
+              <div style={{ marginBottom: 32 }}>
+                <div style={{ ...OL, color: T.textSub, marginBottom: user ? 10 : 0 }}>
+                  Your journey
+                </div>
+                {user && (
+                  <div className="sf-stat" style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+                    <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.025em", lineHeight: 1, color: completions.size > 0 ? T.known : T.textSub }}>
+                      {completions.size}
+                    </span>
+                    <span style={{ fontSize: 14, color: T.textSub }}>
+                      of {SCENARIOS.length} completed
+                    </span>
+                  </div>
+                )}
               </div>
 
               {(() => {
@@ -1482,7 +1494,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               >
                 <Volume2 size={16} />
               </button>
-              <div style={{ fontSize: 26, fontWeight: 700, color: T.text, textAlign: "center", lineHeight: 1.3 }}>
+              <div style={{ fontSize: 32, fontWeight: 700, color: T.text, textAlign: "center", lineHeight: 1.25, letterSpacing: "-0.015em" }}>
                 {card.spanish}
               </div>
               <div style={{ fontSize: 12, color: T.textSub, marginTop: 6 }}>tap card to see translation</div>
@@ -1492,7 +1504,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
           const cardBack = card && (
             <>
               <div style={{ fontSize: 11, fontWeight: 600, color: T.textSub, textTransform: "uppercase", letterSpacing: "0.1em" }}>meaning</div>
-              <div style={{ fontSize: 22, fontWeight: 600, color: T.text, textAlign: "center", lineHeight: 1.3 }}>
+              <div style={{ fontSize: 26, fontWeight: 600, color: T.text, textAlign: "center", lineHeight: 1.25, letterSpacing: "-0.01em" }}>
                 {card.english}
               </div>
               <div style={{ fontSize: 14, color: T.textSub, marginTop: 6 }}>{card.spanish}</div>
@@ -1973,7 +1985,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
               <button
                 onClick={toggleListen}
                 disabled={!supported || thinking}
-                className={listening ? "sf-mic--listening" : ""}
+                className={listening ? "sf-mic--listening" : (supported && !thinking ? "sf-mic-idle" : "")}
                 style={{
                   width: 76,
                   height: 76,
@@ -2025,10 +2037,11 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             {/* Scenario title */}
             <h2
               style={{
-                fontSize: 28,
-                fontWeight: 700,
-                letterSpacing: "-0.01em",
-                margin: "10px 0 28px",
+                fontSize: 36,
+                fontWeight: 800,
+                letterSpacing: "-0.022em",
+                lineHeight: 1.1,
+                margin: "10px 0 32px",
                 color: T.text,
               }}
             >
@@ -2049,11 +2062,11 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     background: T.supportTint,
                     border: "1px solid rgba(92,122,107,.18)",
                     borderRadius: T.card,
-                    padding: "20px 22px",
-                    fontSize: 16,
-                    lineHeight: 1.55,
+                    padding: "24px 26px",
+                    fontSize: 17,
+                    lineHeight: 1.6,
                     color: T.text,
-                    marginBottom: 28,
+                    marginBottom: 32,
                   }}
                 >
                   {feedback.encouragement}
@@ -2094,10 +2107,11 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       </div>
                       <div
                         style={{
-                          fontSize: 18,
-                          fontWeight: 600,
+                          fontSize: 20,
+                          fontWeight: 700,
                           color: T.accent,
                           marginBottom: 8,
+                          letterSpacing: "-0.01em",
                         }}
                       >
                         {f.better}
@@ -2136,8 +2150,10 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                     </div>
                     <div
                       style={{
-                        fontSize: 19,
+                        fontSize: 22,
                         lineHeight: 1.35,
+                        fontWeight: 500,
+                        letterSpacing: "-0.01em",
                         color: "#fff",
                       }}
                     >

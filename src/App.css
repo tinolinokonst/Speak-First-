@@ -230,6 +230,63 @@ button:focus-visible {
   box-shadow: 0 8px 22px rgba(30, 27, 22, .07);
 }
 
+/* ─── Input focus ring ─────────────────────────────────────────────────────
+   Warm coral glow on focus; consistent with the accent palette. */
+input:focus,
+textarea:focus {
+  border-color: rgba(232, 101, 78, .55) !important;
+  box-shadow: 0 0 0 3px rgba(232, 101, 78, .10) !important;
+  outline: none;
+}
+
+/* ─── Outlined / secondary button interactions ─────────────────────────────
+   Ghost-bordered buttons lift and darken their border on hover. */
+.sf-btn-secondary {
+  transition: transform .13s ease, box-shadow .13s ease, border-color .14s ease;
+}
+.sf-btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(30, 27, 22, .07);
+  border-color: rgba(30, 27, 22, .24) !important;
+}
+.sf-btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* ─── Card surface hover ───────────────────────────────────────────────────
+   Quiet lift for non-clickable informational surface cards. */
+.sf-card-lift {
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.sf-card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(30, 27, 22, .08);
+}
+
+/* ─── Animated stat number ──────────────────────────────────────────────────
+   Real user-derived counts (e.g. completion progress) fade in from below. */
+@keyframes sf-count-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.sf-stat {
+  animation: sf-count-in .4s ease both;
+}
+
+/* ─── Idle mic button hover ─────────────────────────────────────────────────
+   Gentle scale + glow makes the idle mic feel more inviting. */
+.sf-mic-idle {
+  transition: transform .15s ease, box-shadow .15s ease !important;
+}
+.sf-mic-idle:hover {
+  transform: scale(1.04);
+  box-shadow: 0 8px 28px rgba(30, 27, 22, .22) !important;
+}
+.sf-mic-idle:active {
+  transform: scale(0.97);
+}
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────
    Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
@@ -257,11 +314,17 @@ button:focus-visible {
   .sf-nav-link,
   .sf-cta-hero,
   .sf-scenario-tile,
-  .sf-step {
+  .sf-step,
+  .sf-btn-secondary,
+  .sf-card-lift,
+  .sf-mic-idle {
     transition: none !important;
     transform: none !important;
     box-shadow: none !important;
     filter: none !important;
+  }
+  .sf-stat {
+    animation: none !important;
   }
   button {
     transition: none !important;

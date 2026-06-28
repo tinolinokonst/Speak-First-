@@ -191,16 +191,17 @@ const containerStyle = {
   display: "flex",
   flexDirection: "column",
   justifyContent: "center",
-  padding: "48px 20px",
+  padding: "64px 20px",
   maxWidth: 420,
   margin: "0 auto",
 };
 
 const headingStyle = {
-  fontSize: 28,
-  fontWeight: 700,
-  letterSpacing: "-0.015em",
-  margin: "0 0 8px",
+  fontSize: 36,
+  fontWeight: 800,
+  letterSpacing: "-0.022em",
+  lineHeight: 1.1,
+  margin: "0 0 10px",
   color: T.text,
 };
 

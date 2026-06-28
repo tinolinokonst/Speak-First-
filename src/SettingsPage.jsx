@@ -41,7 +41,7 @@ function Section({ icon, title, children }) {
           display: "flex",
           alignItems: "center",
           gap: 10,
-          padding: "16px 22px",
+          padding: "20px 24px",
           borderBottom: `1px solid ${T.border}`,
           background: T.bg,
         }}
@@ -49,7 +49,7 @@ function Section({ icon, title, children }) {
         <span style={{ color: T.textSub, display: "flex" }}>{icon}</span>
         <span style={{ ...OL, color: T.text, letterSpacing: "0.09em" }}>{title}</span>
       </div>
-      <div style={{ padding: "20px 22px" }}>{children}</div>
+      <div style={{ padding: "24px 24px" }}>{children}</div>
     </div>
   );
 }
@@ -58,8 +58,8 @@ function Section({ icon, title, children }) {
 function Field({ label, value }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 12, color: T.textSub, marginBottom: 3 }}>{label}</div>
-      <div style={{ fontSize: 15, color: T.text, wordBreak: "break-all" }}>{value || "—"}</div>
+      <div style={{ fontSize: 13, color: T.textSub, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 16, color: T.text, wordBreak: "break-all" }}>{value || "—"}</div>
     </div>
   );
 }
@@ -272,14 +272,14 @@ export default function SettingsPage({ user, onBack, onSignOut, onDeleted }) {
     : null;
 
   return (
-    <div className="sf-screen" style={{ paddingTop: 52, paddingBottom: 80 }}>
+    <div className="sf-screen" style={{ paddingTop: 64, paddingBottom: 96 }}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 32 }}>
         <button onClick={onBack} style={iconBtnStyle} aria-label="Back">
           <ArrowLeft size={18} />
         </button>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: T.text, letterSpacing: "-0.01em" }}>
+        <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: T.text, letterSpacing: "-0.02em" }}>
           Account
         </h1>
       </div>
@@ -337,11 +337,12 @@ const secondaryBtnStyle = {
   color: T.text,
   border: `1.5px solid ${T.border}`,
   borderRadius: T.pill,
-  padding: "10px 18px",
-  fontSize: 14,
+  padding: "12px 20px",
+  fontSize: 15,
   fontWeight: 600,
   fontFamily: T.sans,
   cursor: "pointer",
+  transition: "transform .13s ease, box-shadow .13s ease, border-color .14s ease",
 };
 
 const iconBtnStyle = {
