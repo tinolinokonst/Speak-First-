@@ -6,6 +6,7 @@ import {
   Unlock,
   Target,
 } from "lucide-react";
+import Reveal from "./Reveal.jsx";
 
 const T = {
   bg:          "#FBF8F4",
@@ -107,11 +108,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       {/* ── Three pillars ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {PILLARS.map(({ icon, tileBg, heading, body }, i) => (
-          <div
-            key={i}
-            className="sf-fade-up"
-            style={{ animationDelay: `${0.1 + i * 0.07}s` }}
-          >
+          <Reveal key={i} delay={i * 0.07}>
             <div
               style={{
                 background: T.surface,
@@ -162,30 +159,28 @@ export default function WhyPage({ onBack, onStartPracticing }) {
                 {body}
               </p>
             </div>
-          </div>
+          </Reveal>
         ))}
       </div>
 
       {/* ── Closing ── */}
-      <div
-        className="sf-fade-up"
+      <Reveal
         style={{
           marginTop: 40,
           background: T.surfaceWarm,
           border: `1px solid ${T.border}`,
           borderRadius: T.card,
           padding: "26px 28px",
-          animationDelay: ".31s",
         }}
       >
         <p style={{ fontSize: 15, lineHeight: 1.65, color: T.text, margin: 0 }}>
           It's a low-stakes place to practice. Say what you can, get three things worth
           fixing, and try again.
         </p>
-      </div>
+      </Reveal>
 
       {/* ── CTA ── */}
-      <div className="sf-fade-up" style={{ marginTop: 36, animationDelay: ".38s" }}>
+      <Reveal delay={0.08} style={{ marginTop: 36 }}>
         <button
           className="sf-cta-hero"
           onClick={onStartPracticing}
@@ -222,7 +217,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
         >
           ← Back
         </button>
-      </div>
+      </Reveal>
 
     </div>
   );

@@ -21,6 +21,7 @@ import { supabase } from "./supabase.js";
 import AuthScreen from "./AuthScreen.jsx";
 import SettingsPage from "./SettingsPage.jsx";
 import WhyPage from "./WhyPage.jsx";
+import Reveal from "./Reveal.jsx";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -213,34 +214,9 @@ const LEVEL_BADGE = {
   C2: { text: "#3B4ABB", bg: "#ECEFFE" },
 };
 
-// ── IntersectionObserver scroll-reveal hook ──────────────────────────────────
-// Returns [ref, visible]. When skip=true (prefers-reduced-motion), visible
-// is immediately true and no observer is created.
-function useReveal(threshold, skip) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(!!skip);
-  useEffect(() => {
-    if (skip || !ref.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect(); } },
-      { threshold: threshold ?? 0.15 }
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [skip, threshold]);
-  return [ref, visible];
-}
-
 // ── Landing page ─────────────────────────────────────────────────────────────
 function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) {
-  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
   const [navScrolled, setNavScrolled] = useState(false);
-  const [scenariosRef, scenariosVisible] = useReveal(0.06, reducedMotion);
-  const [stepsRef,     stepsVisible]     = useReveal(0.08, reducedMotion);
-  const [contrastRef,  contrastVisible]  = useReveal(0.08, reducedMotion);
-  const [reassureRef,  reassureVisible]  = useReveal(0.2,  reducedMotion);
-  const [bottomRef,    bottomVisible]    = useReveal(0.3,  reducedMotion);
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 30);
@@ -250,15 +226,6 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
 
   const ctaText   = user ? "Go to your scenarios" : "Start practicing";
   const ctaAction = user ? onDashboard : onStartPracticing;
-
-  // Returns inline reveal styles; no-ops when reducedMotion is on.
-  const rs = (visible, delay = 0) =>
-    reducedMotion ? {} : {
-      opacity:          visible ? 1 : 0,
-      transform:        visible ? "translateY(0)" : "translateY(20px)",
-      transition:       "opacity .48s ease, transform .48s ease",
-      transitionDelay:  `${delay}s`,
-    };
 
   return (
     <div style={{ paddingBottom: 100 }}>
@@ -330,6 +297,10 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           Make mistakes.<br />
           Get better.
         </h1>
+        {/* Decorative waveform — pure CSS oscillation, hidden on reduced motion */}
+        <div className="sf-wave sf-fade-up" style={{ animationDelay: ".06s" }} aria-hidden="true">
+          <span /><span /><span /><span /><span /><span />
+        </div>
         <p
           className="sf-fade-up"
           style={{
@@ -360,24 +331,23 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
         </button>
       </section>
 
-      {/* ── What you practise ────────────────────────── */}
-      <section style={{ marginTop: 80 }} ref={scenariosRef}>
-        <div style={{ ...rs(scenariosVisible, 0), ...OL, color: T.textSub, marginBottom: 8 }}>
-          What you practise
-        </div>
-        <p style={{
-          ...rs(scenariosVisible, 0.07),
-          fontSize: 15, lineHeight: 1.6, color: T.textSub, margin: "0 0 22px",
-        }}>
-          Twelve real situations — from beginner small talk to advanced debates. Each one is a full conversation, not a drill.
-        </p>
+      {/* ── What you practice ────────────────────────── */}
+      <section style={{ marginTop: 80 }}>
+        <Reveal>
+          <div style={{ ...OL, color: T.textSub, marginBottom: 8 }}>
+            What you practice
+          </div>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: T.textSub, margin: "0 0 22px" }}>
+            Twelve real situations — from beginner small talk to advanced debates. Each one is a full conversation, not a drill.
+          </p>
+        </Reveal>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9 }}>
           {SCENARIOS.map((s, i) => (
-            <div
+            <Reveal
               key={s.id}
+              delay={i * 0.03}
               className="sf-scenario-tile"
               style={{
-                ...rs(scenariosVisible, i * 0.028),
                 background: T.surface,
                 border: `1px solid ${T.border}`,
                 borderRadius: T.card,
@@ -405,23 +375,23 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
               <div style={{ fontSize: 11, color: T.textSub, lineHeight: 1.4 }}>
                 {s.sub}
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ── How it works ─────────────────────────────── */}
-      <section style={{ marginTop: 72 }} ref={stepsRef}>
-        <div style={{ ...rs(stepsVisible, 0), ...OL, color: T.textSub, marginBottom: 20 }}>
+      <section style={{ marginTop: 72 }}>
+        <Reveal style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
           How it works
-        </div>
+        </Reveal>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[
             {
               icon: <MapPin size={20} color={T.accent} />,
               tileBg: T.accentTint,
               title: "Pick a real situation",
-              body: "Choose from twelve real scenarios — order at a café, navigate a doctor's appointment, or practise for a job interview.",
+              body: "Choose from twelve real scenarios — order at a café, navigate a doctor's appointment, or practice for a job interview.",
             },
             {
               icon: <Mic size={20} color={T.accent} />,
@@ -436,11 +406,11 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
               body: "After you finish, see the three most important things to fix — focused feedback, not a list of every mistake.",
             },
           ].map(({ icon, tileBg, title, body }, i) => (
-            <div
+            <Reveal
               key={title}
+              delay={i * 0.08}
               className="sf-step"
               style={{
-                ...rs(stepsVisible, i * 0.1),
                 background: T.surface,
                 border: `1px solid ${T.border}`,
                 borderRadius: T.card,
@@ -468,19 +438,19 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
                   {body}
                 </div>
               </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* ── What makes it different ──────────────────── */}
-      <section style={{ marginTop: 72 }} ref={contrastRef}>
-        <div style={{ ...rs(contrastVisible, 0), ...OL, color: T.textSub, marginBottom: 20 }}>
+      <section style={{ marginTop: 72 }}>
+        <Reveal style={{ ...OL, color: T.textSub, marginBottom: 20 }}>
           What makes it different
-        </div>
-        <div
+        </Reveal>
+        <Reveal
+          delay={0.07}
           style={{
-            ...rs(contrastVisible, 0.07),
             background: T.surface,
             border: `1px solid ${T.border}`,
             borderRadius: T.card,
@@ -506,7 +476,6 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
             <div
               key={i}
               style={{
-                ...rs(contrastVisible, 0.12 + i * 0.07),
                 display: "flex",
                 borderTop: `1px solid ${T.border}`,
               }}
@@ -522,14 +491,13 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
               </div>
             </div>
           ))}
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Reassurance ──────────────────────────────── */}
-      <div ref={reassureRef} style={{ marginTop: 44 }}>
+      <Reveal threshold={0.2} style={{ marginTop: 44 }}>
         <div
           style={{
-            ...rs(reassureVisible, 0),
             background: T.surfaceWarm,
             border: `1px solid ${T.border}`,
             borderRadius: T.card,
@@ -539,23 +507,22 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
             color: T.text,
           }}
         >
-          Speaking a new language feels exposed. This is a low-pressure space to practise — the AI partner understands even broken Spanish, and you'll never be judged or corrected mid-sentence.
+          Speaking a new language feels exposed. This is a low-pressure space to practice — the AI partner understands even broken Spanish, and you'll never be judged or corrected mid-sentence.
         </div>
-      </div>
+      </Reveal>
 
       {/* ── Bottom CTA ───────────────────────────────── */}
-      <div
-        ref={bottomRef}
+      <Reveal
+        threshold={0.3}
         style={{ marginTop: 72, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}
       >
-        <div style={{ ...rs(bottomVisible, 0), ...OL, color: T.textSub, marginBottom: 16 }}>
+        <div style={{ ...OL, color: T.textSub, marginBottom: 16 }}>
           Ready to start speaking?
         </div>
         <button
           className="sf-cta-hero"
           onClick={ctaAction}
           style={{
-            ...rs(bottomVisible, 0.08),
             display: "inline-flex", alignItems: "center", gap: 8,
             background: T.accent, color: "#fff", border: "none",
             borderRadius: T.pill, padding: "17px 32px",
@@ -566,11 +533,11 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           <ChevronRight size={18} />
         </button>
         {!user && (
-          <p style={{ ...rs(bottomVisible, 0.14), fontSize: 13, color: T.textSub, marginTop: 12 }}>
+          <p style={{ fontSize: 13, color: T.textSub, marginTop: 12 }}>
             Free to start.
           </p>
         )}
-      </div>
+      </Reveal>
     </div>
   );
 }
@@ -1403,7 +1370,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                       )}
                       {learningCount > 0 && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.learnTint, color: T.learn, borderRadius: T.pill, padding: "5px 12px", fontSize: 13, fontWeight: 600 }}>
-                          <BookOpen size={13} /> {learningCount} to practise
+                          <BookOpen size={13} /> {learningCount} to practice
                         </span>
                       )}
                     </div>

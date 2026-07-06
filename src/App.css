@@ -210,24 +210,23 @@ button:focus-visible {
 }
 
 /* ─── Scenario tiles (landing page grid) ──────────────────────────────────
-   Subtle lift + accent border on hover to signal visual interactivity. */
-.sf-scenario-tile {
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
-}
+   Lift + stronger shadow on hover. Not clickable, so no cursor change.
+   NOTE: tiles are wrapped in Reveal, whose inline transition (opacity/
+   transform) wins during the reveal; :hover transform still applies after. */
 .sf-scenario-tile:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 22px rgba(30, 27, 22, .09);
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 26px rgba(30, 27, 22, .12);
   border-color: #E8654E !important;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease !important;
 }
 
 /* ─── How-it-works step cards ──────────────────────────────────────────────
-   Gentle lift — sequential steps feel calm, not bouncy. */
-.sf-step {
-  transition: transform .18s ease, box-shadow .18s ease;
-}
+   Gentle lift — sequential steps feel calm, not bouncy. !important beats the
+   Reveal wrapper's inline transform/transition once revealed. */
 .sf-step:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important;
   box-shadow: 0 8px 22px rgba(30, 27, 22, .07);
+  transition: transform .15s ease, box-shadow .15s ease !important;
 }
 
 /* ─── Input focus ring ─────────────────────────────────────────────────────
@@ -287,9 +286,42 @@ textarea:focus {
   transform: scale(0.97);
 }
 
+/* ─── Hero waveform ─────────────────────────────────────────────────────────
+   Decorative coral bars gently oscillating under the hero headline.
+   Pure CSS, staggered delays; hidden entirely on prefers-reduced-motion. */
+@keyframes sf-wave-osc {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1); }
+}
+.sf-wave {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 26px;
+  margin: 0 0 26px;
+}
+.sf-wave span {
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: #E8654E;
+  opacity: 0.35;
+  transform-origin: bottom;
+  animation: sf-wave-osc 1.5s ease-in-out infinite;
+}
+.sf-wave span:nth-child(1) { animation-delay: 0s;    height: 60%; }
+.sf-wave span:nth-child(2) { animation-delay: 0.18s; height: 85%; }
+.sf-wave span:nth-child(3) { animation-delay: 0.36s; height: 100%; }
+.sf-wave span:nth-child(4) { animation-delay: 0.54s; height: 75%; }
+.sf-wave span:nth-child(5) { animation-delay: 0.72s; height: 90%; }
+.sf-wave span:nth-child(6) { animation-delay: 0.90s; height: 55%; }
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────
    Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
+  .sf-wave {
+    display: none;
+  }
   .sf-stop,
   .sf-stop:hover {
     transition: none;
@@ -314,7 +346,9 @@ textarea:focus {
   .sf-nav-link,
   .sf-cta-hero,
   .sf-scenario-tile,
+  .sf-scenario-tile:hover,
   .sf-step,
+  .sf-step:hover,
   .sf-btn-secondary,
   .sf-card-lift,
   .sf-mic-idle {
