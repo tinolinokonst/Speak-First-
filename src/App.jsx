@@ -5,6 +5,7 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  Keyboard,
   Languages,
   Lightbulb,
   LogOut,
@@ -22,6 +23,9 @@ import AuthScreen from "./AuthScreen.jsx";
 import SettingsPage from "./SettingsPage.jsx";
 import WhyPage from "./WhyPage.jsx";
 import Reveal from "./Reveal.jsx";
+import DemoPanel from "./DemoPanel.jsx";
+import TextReplyInput from "./TextReplyInput.jsx";
+import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -315,20 +319,26 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           Your AI conversation partner never interrupts or corrects you mid-sentence.
           Say whatever Spanish you can — then see the three things most worth fixing.
         </p>
-        <button
-          className="sf-cta-hero sf-fade-up"
-          onClick={ctaAction}
-          style={{
-            animationDelay: ".18s",
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: T.accent, color: "#fff", border: "none",
-            borderRadius: T.pill, padding: "17px 30px",
-            fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
-          }}
+        <div
+          className="sf-fade-up"
+          style={{ animationDelay: ".18s", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}
         >
-          {ctaText}
-          <ChevronRight size={18} />
-        </button>
+          <button
+            className="sf-cta-hero"
+            onClick={ctaAction}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: T.accent, color: "#fff", border: "none",
+              borderRadius: T.pill, padding: "17px 30px",
+              fontSize: 16, fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
+            }}
+          >
+            {ctaText}
+            <ChevronRight size={18} />
+          </button>
+          {/* Guest demo — conversation lives in component state only, never stored */}
+          {!user && <DemoPanel onSignup={onStartPracticing} />}
+        </div>
       </section>
 
       {/* ── What you practice ────────────────────────── */}
@@ -576,8 +586,7 @@ export default function App() {
 
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
-  const pendingSpeakRef = useRef(null); // tracks any deferred voiceschanged listener so it can be cancelled
-  const speakVersionRef = useRef(0);   // incremented on every speak() call; stale callbacks check this and bail
+  const [typeMode, setTypeMode] = useState(false); // typed-reply fallback on the chat screen
 
   useEffect(() => {
     const SR =
@@ -672,66 +681,8 @@ export default function App() {
     }
   }
 
-  // Cancels all in-progress and queued speech, increments the version counter so
-  // any doSpeak callback already scheduled (via setTimeout or voiceschanged) will
-  // see a stale version and bail, and clears the pending listener reference.
-  function stopAllSpeech() {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    speakVersionRef.current++;
-    if (pendingSpeakRef.current) {
-      window.speechSynthesis.removeEventListener("voiceschanged", pendingSpeakRef.current);
-      pendingSpeakRef.current = null;
-    }
-  }
-
-  // Hardened Web Speech API wrapper.
-  // Fixes: (1) voices load async — wait for voiceschanged before speaking;
-  //        (2) engine stall on backgrounded tabs — resume() if paused;
-  //        (3) missing Spanish voice — fall back to system default rather than fail silently;
-  //        (4) Chrome cancel() is async — version guard + 50ms delay prevent stale/overlapping audio.
-  function speak(text) {
-    if (!window.speechSynthesis) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
-    if (synth.paused) synth.resume();
-
-    if (pendingSpeakRef.current) {
-      synth.removeEventListener("voiceschanged", pendingSpeakRef.current);
-      pendingSpeakRef.current = null;
-    }
-
-    // Stamp this speak() call; any older doSpeak callbacks will see a mismatch and exit.
-    const version = ++speakVersionRef.current;
-
-    const doSpeak = () => {
-      if (speakVersionRef.current !== version) return;
-      pendingSpeakRef.current = null;
-      // Strip pictographic emoji (and their variation selectors / ZWJ sequences) so
-      // the browser never reads "cara sonriente" or similar emoji names aloud.
-      const spoken = text
-        .replace(/\p{Extended_Pictographic}[︀-️‍]*/gu, "")
-        .replace(/ {2,}/g, " ")
-        .trim();
-      const u = new SpeechSynthesisUtterance(spoken);
-      u.lang = "es-ES";
-      u.rate = 0.95;
-      const voices = synth.getVoices();
-      const spanish = voices.find((v) => v.lang.startsWith("es"));
-      if (spanish) u.voice = spanish;
-      synth.speak(u);
-    };
-
-    if (synth.getVoices().length > 0) {
-      // 50ms lets Chrome's async cancel() take effect before the new utterance
-      // starts, preventing the cancelled audio from briefly stacking with it.
-      setTimeout(doSpeak, 50);
-    } else {
-      // Voice list is often empty on first call in Chrome — defer until ready.
-      pendingSpeakRef.current = doSpeak;
-      synth.addEventListener("voiceschanged", doSpeak, { once: true });
-    }
-  }
+  // speak() / stopAllSpeech() now live in src/speech.js, shared with the
+  // landing-page demo so there is exactly one hardened TTS implementation.
 
   function startScenario(s) {
     stopAllSpeech();
@@ -843,23 +794,27 @@ Rules:
   }
 
   function toggleListen() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
     if (listening) {
       recogRef.current && recogRef.current.stop();
       return;
     }
     stopAllSpeech();
-    const r = new SR();
-    r.lang = "es-ES";
-    r.interimResults = false;
-    r.maxAlternatives = 1;
-    r.onresult = (e) => {
-      const said = e.results[0][0].transcript;
-      handleUserUtterance(said);
-    };
-    r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    const r = createRecognizer({
+      onResult: (said) => handleUserUtterance(said),
+      onEnd: () => setListening(false),
+      onError: (e) => {
+        setListening(false);
+        // Mic denied or unavailable — switch to the typed fallback so the
+        // user is never stuck looking at a dead mic button.
+        if (e?.error === "not-allowed" || e?.error === "service-not-allowed" || e?.error === "audio-capture") {
+          setTypeMode(true);
+        }
+      },
+    });
+    if (!r) {
+      setTypeMode(true);
+      return;
+    }
     recogRef.current = r;
     setListening(true);
     r.start();
@@ -1949,47 +1904,72 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
                   </div>
                 )}
 
-              <button
-                onClick={toggleListen}
-                disabled={!supported || thinking}
-                className={listening ? "sf-mic--listening" : (supported && !thinking ? "sf-mic-idle" : "")}
-                style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: "50%",
-                  border: "none",
-                  cursor: supported && !thinking ? "pointer" : "default",
-                  background: listening
-                    ? T.accent
-                    : !supported || thinking
-                    ? T.border
-                    : T.text,
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: listening
-                    ? undefined
-                    : !supported || thinking
-                    ? "none"
-                    : T.shadowMic,
-                  transition: "background .2s ease, box-shadow .2s ease",
-                }}
-                aria-label={listening ? "Stop recording" : "Start speaking"}
-              >
-                {listening ? (
-                  <Square size={28} fill="currentColor" strokeWidth={0} />
-                ) : (
-                  <Mic size={28} />
-                )}
-              </button>
-              <span style={{ fontSize: 13, color: T.textSub }}>
-                {listening
-                  ? "Listening… tap to stop"
-                  : thinking
-                  ? "Thinking…"
-                  : "Tap to speak"}
-              </span>
+              {(!supported || typeMode) ? (
+                /* Typed-reply fallback — same min-height as the mic block so
+                   switching modes doesn't shift the layout. */
+                <div style={{ width: "100%", minHeight: 76, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <TextReplyInput onSend={handleUserUtterance} disabled={thinking} autoFocus />
+                  {supported && (
+                    <button
+                      className="sf-btn-ghost"
+                      onClick={() => setTypeMode(false)}
+                      style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit", padding: "2px 4px" }}
+                    >
+                      <Mic size={13} /> use the mic instead
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Balanced 3-column row keeps the mic visually centred while
+                      the "type instead" affordance sits beside it. */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, width: "100%" }}>
+                    <div style={{ width: 86, flexShrink: 0 }} aria-hidden="true" />
+                    <button
+                      onClick={toggleListen}
+                      disabled={thinking}
+                      className={listening ? "sf-mic--listening" : (!thinking ? "sf-mic-idle" : "")}
+                      style={{
+                        width: 76,
+                        height: 76,
+                        borderRadius: "50%",
+                        border: "none",
+                        cursor: !thinking ? "pointer" : "default",
+                        background: listening ? T.accent : thinking ? T.border : T.text,
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        boxShadow: listening ? undefined : thinking ? "none" : T.shadowMic,
+                        transition: "background .2s ease, box-shadow .2s ease",
+                      }}
+                      aria-label={listening ? "Stop recording" : "Start speaking"}
+                    >
+                      {listening ? (
+                        <Square size={28} fill="currentColor" strokeWidth={0} />
+                      ) : (
+                        <Mic size={28} />
+                      )}
+                    </button>
+                    <button
+                      className="sf-btn-ghost"
+                      onClick={() => setTypeMode(true)}
+                      style={{ width: 86, flexShrink: 0, display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", color: T.accent, fontSize: 12, fontWeight: 600, fontFamily: "inherit", padding: "4px 0" }}
+                    >
+                      <Keyboard size={15} />
+                      type instead
+                    </button>
+                  </div>
+                  <span style={{ fontSize: 13, color: T.textSub }}>
+                    {listening
+                      ? "Listening… tap to stop"
+                      : thinking
+                      ? "Thinking…"
+                      : "Tap to speak"}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         )}

@@ -5,15 +5,34 @@
 // Two modes, set by `kind` in the request body:
 //   "conversation" -> the in-character partner (never corrects)
 //   "coach"        -> the end-of-session reviewer (returns JSON feedback)
+//
+// Hardening: origin allow-list (403), per-IP rate limit via Upstash
+// (20 req/min, fails open when env vars are missing), and input caps
+// (max 40 messages / 8000 total chars → 400). See api/_guard.js.
+
+import { checkOrigin, rateLimit, checkInputCaps } from "./_guard.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
 
+  if (!checkOrigin(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  const { success } = await rateLimit(req, "chat", 20, "1 m");
+  if (!success) {
+    return res.status(429).json({ error: "Too many requests — slow down a little." });
+  }
+
   const { kind, system, messages } = req.body || {};
   if (!system || !messages) {
     return res.status(400).json({ error: "Missing system or messages" });
+  }
+
+  if (!checkInputCaps(messages, system)) {
+    return res.status(400).json({ error: "Payload too large" });
   }
 
   try {
