@@ -26,6 +26,7 @@ import Reveal from "./Reveal.jsx";
 import DemoPanel from "./DemoPanel.jsx";
 import TextReplyInput from "./TextReplyInput.jsx";
 import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
+import { WARMUP_PHRASES } from "./warmupPhrases.js";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -740,7 +741,14 @@ export default function App() {
     setWarmupPhase("cards");
     setWarmupMarks([]);
     setWarmupDeck(null);
-    if (!(s.id in warmupPhrases)) fetchWarmupPhrases(s);
+    if (!(s.id in warmupPhrases)) {
+      // Static phrase sets ship with the repo — instant, no API call.
+      // The generator only runs for a scenario id with no preset (cache miss),
+      // which keeps the loading/error states as the fallback path.
+      const preset = WARMUP_PHRASES[s.id];
+      if (preset) setWarmupPhrases((prev) => ({ ...prev, [s.id]: preset }));
+      else fetchWarmupPhrases(s);
+    }
   }
 
   // ── Conversation call. The system prompt is the whole product. It stays in
