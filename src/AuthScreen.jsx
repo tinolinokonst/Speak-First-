@@ -38,6 +38,15 @@ export default function AuthScreen({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [checkEmail, setCheckEmail] = useState(false); // post-signup confirmation state
+  const [shakeField, setShakeField] = useState(null); // "email" | "password" — one subtle shake on invalid submit
+
+  // Guess which field the error is about so only that one shakes.
+  function shakeFor(message) {
+    const m = (message || "").toLowerCase();
+    const field = m.includes("email") || m.includes("account") ? "email" : "password";
+    setShakeField(field);
+    setTimeout(() => setShakeField(null), 300); // clear after the 250ms animation
+  }
 
   async function handleEmailSubmit(e) {
     e.preventDefault();
@@ -57,7 +66,9 @@ export default function AuthScreen({ onSuccess }) {
         // onAuthStateChange SIGNED_IN in App.jsx navigates to home.
       }
     } catch (err) {
-      setError(friendlyError(err.message));
+      const friendly = friendlyError(err.message);
+      setError(friendly);
+      shakeFor(friendly);
     } finally {
       setLoading(false);
     }
@@ -126,6 +137,7 @@ export default function AuthScreen({ onSuccess }) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          className={shakeField === "email" ? "sf-shake" : ""}
           style={inputStyle}
         />
         <input
@@ -135,22 +147,28 @@ export default function AuthScreen({ onSuccess }) {
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={6}
+          className={shakeField === "password" ? "sf-shake" : ""}
           style={inputStyle}
         />
 
-        {error && (
-          <div style={errorStyle}>{error}</div>
-        )}
+        {/* Inline validation slot — expands + fades in, never pops (zero jump). */}
+        <div className={`sf-field-msg${error ? " sf-field-msg--show" : ""}`} aria-live="polite">
+          <div>
+            <div style={errorStyle}>{error || " "}</div>
+          </div>
+        </div>
 
         <button
           type="submit"
           disabled={loading}
-          style={{ ...primaryBtnStyle, opacity: loading ? 0.6 : 1 }}
+          className={loading ? "sf-btn-loading" : ""}
+          style={{ ...primaryBtnStyle, position: "relative" }}
         >
-          <Mail size={16} />
-          {loading
-            ? (mode === "login" ? "Logging in…" : "Creating account…")
-            : (mode === "login" ? "Log in with email" : "Sign up with email")}
+          <span className="sf-btn-label">
+            <Mail size={16} />
+            {mode === "login" ? "Log in with email" : "Sign up with email"}
+          </span>
+          <span className="sf-btn-spinner" aria-hidden="true" />
         </button>
       </form>
 

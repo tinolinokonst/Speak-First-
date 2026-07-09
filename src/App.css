@@ -1,7 +1,27 @@
+/* ─── Motion tokens ─────────────────────────────────────────────────────────
+   ONE easing and four durations, used by every transition/animation below
+   and referenced from inline styles (Reveal, DemoPanel). No mixed timings.
+     press  100ms — physical button press
+     fast   150ms — hover/feedback acknowledgment
+     med    250ms — state changes (messages, errors, mic morphs)
+     slow   300ms — panel expansion, scroll reveals */
+:root {
+  --sf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --sf-dur-press: 100ms;
+  --sf-dur-fast: 150ms;
+  --sf-dur-med: 250ms;
+  --sf-dur-slow: 300ms;
+}
+
+/* Nav anchor scrolling glides; reduced-motion resets it below. */
+html {
+  scroll-behavior: smooth;
+}
+
 /* ─── Journey stop cards ───────────────────────────────────────────────────
    Hover lift and keyboard focus ring — lives here so pseudo-selectors work. */
 .sf-stop {
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-stop:hover {
   transform: translateY(-2px);
@@ -56,14 +76,49 @@
   to   { opacity: 1; transform: translateY(0);    }
 }
 .sf-screen {
-  animation: sf-fade-up .22s ease both;
+  animation: sf-fade-up var(--sf-dur-med) var(--sf-ease) both;
 }
 .sf-fade-up {
-  animation: sf-fade-up .30s ease both;
+  animation: sf-fade-up var(--sf-dur-slow) var(--sf-ease) both;
 }
 .sf-reveal {
-  animation: sf-fade-up .16s ease both;
+  animation: sf-fade-up var(--sf-dur-fast) var(--sf-ease) both;
 }
+
+/* ─── New message fade-slide ────────────────────────────────────────────────
+   Transcript lines (demo + any chat bubble given the class) slide in 8px. */
+@keyframes sf-msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+.sf-msg-in {
+  animation: sf-msg-in var(--sf-dur-med) var(--sf-ease) both;
+}
+
+/* ─── Typing / thinking indicator ───────────────────────────────────────────
+   Three soft dots while Sofía's reply is in flight. Loops only during the
+   pending request — it IS the response to a user action. */
+@keyframes sf-typing-dot {
+  0%, 60%, 100% { transform: translateY(0);    opacity: .4; }
+  30%           { transform: translateY(-3px); opacity: 1;  }
+}
+.sf-typing {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 2px;
+  height: 15px;
+  box-sizing: content-box;
+}
+.sf-typing span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #6B6560;
+  animation: sf-typing-dot 1s var(--sf-ease) infinite;
+}
+.sf-typing span:nth-child(2) { animation-delay: .15s; }
+.sf-typing span:nth-child(3) { animation-delay: .3s; }
 
 /* ─── Mic recording pulse ───────────────────────────────────────────────────
    Radiating ring makes the active-listening state unmistakable at a glance. */
@@ -76,6 +131,30 @@
   animation: sf-pulse-ring 1.6s ease-out infinite;
 }
 
+/* ─── Mic processing state ──────────────────────────────────────────────────
+   Thin rotating coral arc around the mic while the reply is in flight.
+   Distinct from idle (plain) and listening (pulse); morphs, never jump-cuts. */
+@keyframes sf-rotate {
+  to { transform: rotate(360deg); }
+}
+.sf-mic--processing {
+  position: relative;
+}
+.sf-mic--processing::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid rgba(232, 101, 78, .22);
+  border-top-color: #E8654E;
+  animation: sf-rotate .9s linear infinite;
+}
+
+/* Shared mic base — background/shadow morph between the three states. */
+.sf-mic {
+  transition: background var(--sf-dur-med) var(--sf-ease), box-shadow var(--sf-dur-med) var(--sf-ease), transform var(--sf-dur-fast) var(--sf-ease);
+}
+
 /* ─── Global focus ring ────────────────────────────────────────────────────
    Every interactive element gets a visible coral ring — WCAG 2.4.11. */
 button:focus-visible {
@@ -84,10 +163,69 @@ button:focus-visible {
   border-radius: 6px;
 }
 
+/* ─── Global button press ───────────────────────────────────────────────────
+   Every button compresses slightly on press so clicks feel physical.
+   Class-specific :active rules below win specificity and add their own detail. */
+button {
+  transition: transform var(--sf-dur-fast) var(--sf-ease);
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: var(--sf-dur-press);
+}
+
+/* ─── Arrow-slide CTAs ──────────────────────────────────────────────────────
+   Primary CTAs with a chevron: the arrow nudges right on hover. */
+.sf-arrow-cta svg {
+  transition: transform var(--sf-dur-fast) var(--sf-ease);
+}
+.sf-arrow-cta:hover svg {
+  transform: translateX(3px);
+}
+
+/* ─── Inline button loading state ───────────────────────────────────────────
+   Label fades out, spinner fades in INSIDE the button; size never changes.
+   Usage: <button class="… sf-btn-loading"><span class="sf-btn-label">…</span>
+          <span class="sf-btn-spinner" aria-hidden="true"></span></button> */
+.sf-btn-label {
+  transition: opacity var(--sf-dur-fast) var(--sf-ease);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.sf-btn-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--sf-dur-fast) var(--sf-ease);
+  pointer-events: none;
+}
+.sf-btn-spinner::after {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  animation: sf-rotate .7s linear infinite;
+}
+.sf-btn-loading {
+  pointer-events: none;
+}
+.sf-btn-loading .sf-btn-label {
+  opacity: 0;
+}
+.sf-btn-loading .sf-btn-spinner {
+  opacity: 1;
+}
+
 /* ─── Primary CTA button ───────────────────────────────────────────────────
    Full-width coral pill. Lifts + brightens on hover; depresses on active. */
 .sf-btn-primary {
-  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), filter var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-btn-primary:hover {
   transform: translateY(-1px);
@@ -95,7 +233,8 @@ button:focus-visible {
   filter: brightness(1.06);
 }
 .sf-btn-primary:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.97);
+  transition-duration: var(--sf-dur-press);
   box-shadow: none;
   filter: brightness(0.96);
 }
@@ -103,7 +242,7 @@ button:focus-visible {
 /* ─── Ghost / text button ──────────────────────────────────────────────────
    Subtle underline on hover; no box decoration — keeps it quiet. */
 .sf-btn-ghost {
-  transition: opacity .12s ease;
+  transition: opacity var(--sf-dur-fast) var(--sf-ease), transform var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-btn-ghost:hover {
   opacity: 0.70;
@@ -115,21 +254,22 @@ button:focus-visible {
 /* ─── Mark buttons (Know it / Still learning) ──────────────────────────────
    Lift on hover; press on active; focus ring matches the card colour. */
 .sf-btn-mark {
-  transition: transform .12s ease, box-shadow .12s ease, background .15s, border-color .15s, color .15s;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), background var(--sf-dur-fast) var(--sf-ease), border-color var(--sf-dur-fast) var(--sf-ease), color var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-btn-mark:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(30, 27, 22, .08);
 }
 .sf-btn-mark:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.97);
+  transition-duration: var(--sf-dur-press);
   box-shadow: none;
 }
 
 /* ─── Flashcard ─────────────────────────────────────────────────────────────
    The outer tap-target. Mild lift on hover so it feels tappable. */
 .sf-flashcard {
-  transition: transform .12s ease, box-shadow .12s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-flashcard:hover {
   transform: translateY(-2px);
@@ -160,7 +300,7 @@ button:focus-visible {
   padding: 16px 20px;
   margin: 0 -20px;
   background: transparent;
-  transition: background .25s ease, box-shadow .25s ease;
+  transition: background var(--sf-dur-med) var(--sf-ease), box-shadow var(--sf-dur-med) var(--sf-ease);
 }
 .sf-nav--scrolled {
   background: rgba(251, 248, 244, 0.94);
@@ -172,7 +312,7 @@ button:focus-visible {
 /* ─── Nav text link ────────────────────────────────────────────────────────
    Smooth colour shift on hover; no decoration. */
 .sf-nav-link {
-  transition: color .14s ease;
+  transition: color var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-nav-link:hover {
   color: #1E1B16 !important;
@@ -181,7 +321,7 @@ button:focus-visible {
 /* ─── Nav primary CTA (coral pill) ────────────────────────────────────────
    Lifts and brightens on hover; depresses on active. */
 .sf-nav-cta {
-  transition: transform .13s ease, box-shadow .13s ease, filter .13s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), filter var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-nav-cta:hover {
   transform: translateY(-1px);
@@ -189,14 +329,15 @@ button:focus-visible {
   filter: brightness(1.06);
 }
 .sf-nav-cta:active {
-  transform: translateY(0);
+  transform: scale(0.97);
+  transition-duration: var(--sf-dur-press);
   box-shadow: none;
 }
 
 /* ─── Hero primary CTA ─────────────────────────────────────────────────────
    More dramatic lift on hover to make the main action feel inviting. */
 .sf-cta-hero {
-  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), filter var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-cta-hero:hover {
   transform: translateY(-2px) scale(1.015);
@@ -204,7 +345,8 @@ button:focus-visible {
   filter: brightness(1.05);
 }
 .sf-cta-hero:active {
-  transform: translateY(0) scale(0.99);
+  transform: translateY(0) scale(0.97);
+  transition-duration: var(--sf-dur-press);
   box-shadow: 0 3px 10px rgba(232, 101, 78, .18);
   filter: brightness(0.97);
 }
@@ -217,7 +359,7 @@ button:focus-visible {
   transform: translateY(-4px) !important;
   box-shadow: 0 10px 26px rgba(30, 27, 22, .12);
   border-color: #E8654E !important;
-  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease !important;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), border-color var(--sf-dur-fast) var(--sf-ease) !important;
 }
 
 /* ─── How-it-works step cards ──────────────────────────────────────────────
@@ -226,7 +368,7 @@ button:focus-visible {
 .sf-step:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 8px 22px rgba(30, 27, 22, .07);
-  transition: transform .15s ease, box-shadow .15s ease !important;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease) !important;
 }
 
 /* ─── Input focus ring ─────────────────────────────────────────────────────
@@ -237,11 +379,15 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(232, 101, 78, .10) !important;
   outline: none;
 }
+input,
+textarea {
+  transition: border-color var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease);
+}
 
 /* ─── Outlined / secondary button interactions ─────────────────────────────
    Ghost-bordered buttons lift and darken their border on hover. */
 .sf-btn-secondary {
-  transition: transform .13s ease, box-shadow .13s ease, border-color .14s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), border-color var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-btn-secondary:hover {
   transform: translateY(-1px);
@@ -249,14 +395,15 @@ textarea:focus {
   border-color: rgba(30, 27, 22, .24) !important;
 }
 .sf-btn-secondary:active {
-  transform: translateY(0);
+  transform: scale(0.97);
+  transition-duration: var(--sf-dur-press);
   box-shadow: none;
 }
 
 /* ─── Card surface hover ───────────────────────────────────────────────────
    Quiet lift for non-clickable informational surface cards. */
 .sf-card-lift {
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease);
 }
 .sf-card-lift:hover {
   transform: translateY(-2px);
@@ -270,13 +417,13 @@ textarea:focus {
   to   { opacity: 1; transform: translateY(0);   }
 }
 .sf-stat {
-  animation: sf-count-in .4s ease both;
+  animation: sf-count-in var(--sf-dur-med) var(--sf-ease) both;
 }
 
 /* ─── Idle mic button hover ─────────────────────────────────────────────────
    Gentle scale + glow makes the idle mic feel more inviting. */
 .sf-mic-idle {
-  transition: transform .15s ease, box-shadow .15s ease !important;
+  transition: transform var(--sf-dur-fast) var(--sf-ease), box-shadow var(--sf-dur-fast) var(--sf-ease), background var(--sf-dur-med) var(--sf-ease) !important;
 }
 .sf-mic-idle:hover {
   transform: scale(1.04);
@@ -284,14 +431,67 @@ textarea:focus {
 }
 .sf-mic-idle:active {
   transform: scale(0.97);
+  transition-duration: var(--sf-dur-press);
+}
+
+/* ─── Demo panel expand ─────────────────────────────────────────────────────
+   Height + opacity over 300ms via the grid-rows trick — no measuring, no
+   layout jump. Children need min-height:0 + overflow:hidden to clip. */
+.sf-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  width: 100%;
+  transition: grid-template-rows var(--sf-dur-slow) var(--sf-ease), opacity var(--sf-dur-slow) var(--sf-ease);
+}
+.sf-expand--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.sf-expand > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Field validation feedback (auth forms) ────────────────────────────────
+   Error/success slot expands + fades in rather than popping into place. */
+.sf-field-msg {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--sf-dur-med) var(--sf-ease), opacity var(--sf-dur-med) var(--sf-ease);
+}
+.sf-field-msg--show {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.sf-field-msg > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── Invalid-field shake ───────────────────────────────────────────────────
+   One subtle 4px shake on the offending input; no alert boxes. */
+@keyframes sf-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+.sf-shake {
+  animation: sf-shake var(--sf-dur-med) var(--sf-ease);
 }
 
 /* ─── Hero waveform ─────────────────────────────────────────────────────────
    Decorative coral bars gently oscillating under the hero headline.
-   Pure CSS, staggered delays; hidden entirely on prefers-reduced-motion. */
+   Pure CSS, staggered delays; hidden entirely on prefers-reduced-motion.
+   While the demo mic is listening, .sf-wave--active raises amplitude/speed. */
 @keyframes sf-wave-osc {
   0%, 100% { transform: scaleY(0.35); }
   50%      { transform: scaleY(1); }
+}
+@keyframes sf-wave-osc-hot {
+  0%, 100% { transform: scaleY(0.5); }
+  50%      { transform: scaleY(1.2); }
 }
 .sf-wave {
   display: flex;
@@ -308,6 +508,12 @@ textarea:focus {
   opacity: 0.35;
   transform-origin: bottom;
   animation: sf-wave-osc 1.5s ease-in-out infinite;
+  transition: opacity var(--sf-dur-med) var(--sf-ease);
+}
+.sf-wave--active span {
+  animation-name: sf-wave-osc-hot;
+  animation-duration: 0.8s;
+  opacity: 0.6;
 }
 .sf-wave span:nth-child(1) { animation-delay: 0s;    height: 60%; }
 .sf-wave span:nth-child(2) { animation-delay: 0.18s; height: 85%; }
@@ -316,9 +522,21 @@ textarea:focus {
 .sf-wave span:nth-child(5) { animation-delay: 0.72s; height: 90%; }
 .sf-wave span:nth-child(6) { animation-delay: 0.90s; height: 55%; }
 
+/* ─── Route fade (View Transitions API) ─────────────────────────────────────
+   Screen changes cross-fade quickly; the API is invoked from JS only when
+   supported and motion is allowed, so this is pure progressive enhancement. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--sf-dur-fast);
+  animation-timing-function: var(--sf-ease);
+}
+
 /* ─── Reduced motion ───────────────────────────────────────────────────────
    Strip all motion; keep visually-distinct static states so nothing is lost. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .sf-wave {
     display: none;
   }
@@ -329,13 +547,46 @@ textarea:focus {
   }
   .sf-screen,
   .sf-fade-up,
-  .sf-reveal {
+  .sf-reveal,
+  .sf-msg-in,
+  .sf-shake {
     animation: none;
+  }
+  .sf-typing span {
+    /* Static dots still read as "thinking" */
+    animation: none;
+    opacity: .6;
   }
   .sf-mic--listening {
     /* No pulse — static ring still makes the listening state clearly distinct */
     animation: none;
     box-shadow: 0 0 0 10px rgba(232, 101, 78, .22) !important;
+  }
+  .sf-mic--processing::after {
+    /* No rotation — a full static ring still marks the busy state */
+    animation: none;
+    border-color: rgba(232, 101, 78, .45);
+  }
+  .sf-btn-spinner::after {
+    animation: none;
+    border-color: rgba(255, 255, 255, .8);
+  }
+  .sf-expand,
+  .sf-field-msg,
+  .sf-btn-label,
+  .sf-btn-spinner,
+  .sf-mic,
+  input,
+  textarea {
+    transition: none !important;
+  }
+  .sf-arrow-cta svg {
+    transition: none;
+    transform: none !important;
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
   }
   .sf-btn-primary,
   .sf-btn-ghost,
@@ -360,7 +611,9 @@ textarea:focus {
   .sf-stat {
     animation: none !important;
   }
-  button {
+  button,
+  button:active:not(:disabled) {
     transition: none !important;
+    transform: none !important;
   }
 }

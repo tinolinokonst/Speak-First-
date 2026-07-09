@@ -108,7 +108,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       {/* ── Three pillars ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {PILLARS.map(({ icon, tileBg, heading, body }, i) => (
-          <Reveal key={i} delay={i * 0.07}>
+          <Reveal key={i} delay={i * 0.06}>
             <div
               style={{
                 background: T.surface,
@@ -182,7 +182,7 @@ export default function WhyPage({ onBack, onStartPracticing }) {
       {/* ── CTA ── */}
       <Reveal delay={0.08} style={{ marginTop: 36 }}>
         <button
-          className="sf-cta-hero"
+          className="sf-cta-hero sf-arrow-cta"
           onClick={onStartPracticing}
           style={{
             display: "inline-flex",

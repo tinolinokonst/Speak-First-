@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
 import "./App.css";
 import {
   ArrowLeft,
@@ -222,6 +223,7 @@ const LEVEL_BADGE = {
 // ── Landing page ─────────────────────────────────────────────────────────────
 function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) {
   const [navScrolled, setNavScrolled] = useState(false);
+  const [waveActive, setWaveActive] = useState(false); // demo mic listening → hotter waveform
 
   useEffect(() => {
     const onScroll = () => setNavScrolled(window.scrollY > 30);
@@ -268,7 +270,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
             </button>
           ) : (
             <button
-              className="sf-nav-cta"
+              className="sf-nav-cta sf-arrow-cta"
               onClick={onStartPracticing}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -302,8 +304,9 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           Make mistakes.<br />
           Get better.
         </h1>
-        {/* Decorative waveform — pure CSS oscillation, hidden on reduced motion */}
-        <div className="sf-wave sf-fade-up" style={{ animationDelay: ".06s" }} aria-hidden="true">
+        {/* Decorative waveform — pure CSS oscillation, hidden on reduced motion.
+            Gains amplitude while the demo mic is listening. */}
+        <div className={`sf-wave sf-fade-up${waveActive ? " sf-wave--active" : ""}`} style={{ animationDelay: ".06s" }} aria-hidden="true">
           <span /><span /><span /><span /><span /><span />
         </div>
         <p
@@ -325,7 +328,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           style={{ animationDelay: ".18s", display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12 }}
         >
           <button
-            className="sf-cta-hero"
+            className="sf-cta-hero sf-arrow-cta"
             onClick={ctaAction}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
@@ -338,7 +341,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
             <ChevronRight size={18} />
           </button>
           {/* Guest demo — conversation lives in component state only, never stored */}
-          {!user && <DemoPanel onSignup={onStartPracticing} />}
+          {!user && <DemoPanel onSignup={onStartPracticing} onListeningChange={setWaveActive} />}
         </div>
       </section>
 
@@ -356,7 +359,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           {SCENARIOS.map((s, i) => (
             <Reveal
               key={s.id}
-              delay={i * 0.03}
+              delay={i * 0.05}
               className="sf-scenario-tile"
               style={{
                 background: T.surface,
@@ -419,7 +422,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           ].map(({ icon, tileBg, title, body }, i) => (
             <Reveal
               key={title}
-              delay={i * 0.08}
+              delay={i * 0.06}
               className="sf-step"
               style={{
                 background: T.surface,
@@ -531,7 +534,7 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           Ready to start speaking?
         </div>
         <button
-          className="sf-cta-hero"
+          className="sf-cta-hero sf-arrow-cta"
           onClick={ctaAction}
           style={{
             display: "inline-flex", alignItems: "center", gap: 8,
@@ -673,13 +676,22 @@ export default function App() {
     setScreen("landing");
   }
 
+  // ── Route fade for the PUBLIC pages (landing ↔ why ↔ auth) ───────────────
+  // Uses the View Transitions API when available; plain setScreen otherwise.
+  // flushSync makes React commit inside the transition callback so the API
+  // can capture old/new frames. In-app navigation is untouched.
+  function navigateScreen(next) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (document.startViewTransition && !reduced) {
+      document.startViewTransition(() => flushSync(() => setScreen(next)));
+    } else {
+      setScreen(next);
+    }
+  }
+
   // Called when the "Start practicing" CTA is tapped on the landing page.
   function handleStartPracticing() {
-    if (user) {
-      setScreen("home");
-    } else {
-      setScreen("auth");
-    }
+    navigateScreen(user ? "home" : "auth");
   }
 
   // speak() / stopAllSpeech() now live in src/speech.js, shared with the
@@ -1026,8 +1038,8 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
             user={user}
             isMobile={isMobile}
             onStartPracticing={handleStartPracticing}
-            onWhy={() => setScreen("why")}
-            onDashboard={() => setScreen("home")}
+            onWhy={() => navigateScreen("why")}
+            onDashboard={() => navigateScreen("home")}
           />
         )}
 
@@ -2229,7 +2241,7 @@ Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say 
         {/* ── WHY PAGE ──────────────────────────── */}
         {screen === "why" && (
           <WhyPage
-            onBack={() => setScreen(user ? "home" : "landing")}
+            onBack={() => navigateScreen(user ? "home" : "landing")}
             onStartPracticing={handleStartPracticing}
           />
         )}

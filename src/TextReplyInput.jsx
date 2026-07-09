@@ -14,7 +14,9 @@ const T = {
   sans: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
-export default function TextReplyInput({ onSend, disabled, placeholder = "Escribe tu respuesta…", autoFocus = false }) {
+// `busy` swaps the send icon for an inline spinner (same size, no dead button
+// after a click). Optional — the main chat screen doesn't pass it and is unchanged.
+export default function TextReplyInput({ onSend, disabled, busy = false, placeholder = "Escribe tu respuesta…", autoFocus = false }) {
   const [value, setValue] = useState("");
 
   function submit(e) {
@@ -53,22 +55,25 @@ export default function TextReplyInput({ onSend, disabled, placeholder = "Escrib
         type="submit"
         disabled={disabled || !value.trim()}
         aria-label="Send reply"
+        className={busy ? "sf-btn-loading" : ""}
         style={{
           width: 44,
           height: 44,
           borderRadius: "50%",
           border: "none",
           flexShrink: 0,
-          background: value.trim() && !disabled ? T.accent : T.border,
+          position: "relative",
+          background: busy ? T.accent : value.trim() && !disabled ? T.accent : T.border,
           color: "#fff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: value.trim() && !disabled ? "pointer" : "default",
-          transition: "background .15s ease",
+          transition: "background var(--sf-dur-fast) var(--sf-ease)",
         }}
       >
-        <Send size={17} />
+        <span className="sf-btn-label"><Send size={17} /></span>
+        <span className="sf-btn-spinner" aria-hidden="true" />
       </button>
     </form>
   );

@@ -29,15 +29,24 @@ const OL = { fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransfo
 
 const MAX_USER_TURNS = 4;
 
-export default function DemoPanel({ onSignup }) {
+export default function DemoPanel({ onSignup, onListeningChange }) {
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false); // drives the height+opacity transition
   const [messages, setMessages] = useState([]); // {role:'user'|'assistant', content}
-  const [listening, setListening] = useState(false);
+  const [listening, setListeningState] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [typeMode, setTypeMode] = useState(!recognitionSupported());
   const [error, setError] = useState(null);
   const recogRef = useRef(null);
   const scrollRef = useRef(null);
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Listening state also drives the hero waveform amplitude via the parent.
+  function setListening(v) {
+    setListeningState(v);
+    onListeningChange && onListeningChange(v);
+  }
 
   const userTurns = messages.filter((m) => m.role === "user").length;
   const demoOver = userTurns >= MAX_USER_TURNS;
@@ -45,6 +54,21 @@ export default function DemoPanel({ onSignup }) {
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, thinking]);
+
+  // Trigger the expand transition one frame after the panel mounts so the
+  // grid-rows 0fr → 1fr change actually animates.
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(() => setExpanded(true));
+    return () => cancelAnimationFrame(raf);
+  }, [open]);
+
+  function closePanel() {
+    setExpanded(false);
+    if (listening) setListening(false);
+    if (reducedMotion) setOpen(false);
+    else setTimeout(() => setOpen(false), 300); // matches --sf-dur-slow
+  }
 
   // Kill any audio + recognition when the panel closes or unmounts.
   useEffect(() => {
@@ -130,25 +154,25 @@ export default function DemoPanel({ onSignup }) {
     );
   }
 
-  // ── Expanded inline panel ──
+  // ── Expanded inline panel — height + opacity animate via .sf-expand ──
   return (
-    <div
-      className="sf-reveal"
-      style={{
-        width: "100%",
-        maxWidth: 440,
-        background: T.surface,
-        border: `1px solid ${T.border}`,
-        borderRadius: T.card,
-        boxShadow: T.shadowCard,
-        overflow: "hidden",
-      }}
-    >
+    <div className={`sf-expand${expanded ? " sf-expand--open" : ""}`}>
+      <div>
+        <div
+          style={{
+            maxWidth: 440,
+            background: T.surface,
+            border: `1px solid ${T.border}`,
+            borderRadius: T.card,
+            boxShadow: T.shadowCard,
+            overflow: "hidden",
+          }}
+        >
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: `1px solid ${T.border}`, background: T.bg }}>
         <div style={{ ...OL, color: T.accent }}>Sofía · live demo</div>
         <button
-          onClick={() => setOpen(false)}
+          onClick={closePanel}
           aria-label="Close demo"
           style={{ background: "none", border: "none", cursor: "pointer", color: T.textSub, display: "flex", padding: 2 }}
         >
@@ -167,6 +191,7 @@ export default function DemoPanel({ onSignup }) {
         {messages.map((m, i) => (
           <div
             key={i}
+            className="sf-msg-in"
             style={{
               alignSelf: m.role === "user" ? "flex-end" : "flex-start",
               maxWidth: "85%",
@@ -183,22 +208,24 @@ export default function DemoPanel({ onSignup }) {
           </div>
         ))}
         {thinking && (
-          <div style={{ alignSelf: "flex-start", color: T.textSub, fontSize: 14, padding: "4px 2px" }}>…</div>
+          <div className="sf-msg-in sf-typing" aria-label="Sofía is typing" style={{ alignSelf: "flex-start" }}>
+            <span /><span /><span />
+          </div>
         )}
         {error && (
-          <div style={{ fontSize: 13, color: T.accent, background: T.accentTint, borderRadius: 10, padding: "8px 12px" }}>{error}</div>
+          <div className="sf-msg-in" style={{ fontSize: 13, color: T.accent, background: T.accentTint, borderRadius: 10, padding: "8px 12px" }}>{error}</div>
         )}
       </div>
 
       {/* Footer: end card, or mic / typed input */}
       <div style={{ padding: "12px 16px 14px", borderTop: `1px solid ${T.border}` }}>
         {demoOver && !thinking ? (
-          <div style={{ background: T.supportTint, border: "1px solid rgba(92,122,107,.2)", borderRadius: 12, padding: "14px 16px" }}>
+          <div className="sf-msg-in" style={{ background: T.supportTint, border: "1px solid rgba(92,122,107,.2)", borderRadius: 12, padding: "14px 16px" }}>
             <p style={{ fontSize: 14, lineHeight: 1.55, color: T.text, margin: "0 0 10px" }}>
               That's the demo — sign up to practice 12 real scenarios.
             </p>
             <button
-              className="sf-btn-primary"
+              className="sf-btn-primary sf-arrow-cta"
               onClick={onSignup}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -211,13 +238,13 @@ export default function DemoPanel({ onSignup }) {
             </button>
           </div>
         ) : typeMode ? (
-          <TextReplyInput onSend={sendUtterance} disabled={thinking} autoFocus />
+          <TextReplyInput onSend={sendUtterance} disabled={thinking} busy={thinking} autoFocus />
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button
               onClick={toggleListen}
               disabled={thinking}
-              className={listening ? "sf-mic--listening" : "sf-mic-idle"}
+              className={`sf-mic ${listening ? "sf-mic--listening" : thinking ? "sf-mic--processing" : "sf-mic-idle"}`}
               aria-label={listening ? "Stop recording" : "Start speaking"}
               style={{
                 width: 48, height: 48, borderRadius: "50%", border: "none",
@@ -249,6 +276,8 @@ export default function DemoPanel({ onSignup }) {
         <p style={{ fontSize: 11.5, color: T.textSub, margin: "10px 0 0", lineHeight: 1.5 }}>
           Nothing you say here is saved — the demo lives in this tab and disappears when you close it.
         </p>
+      </div>
+        </div>
       </div>
     </div>
   );

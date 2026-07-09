@@ -28,12 +28,13 @@ export default function Reveal({ children, delay = 0, threshold = 0.12, style, .
     return () => observer.disconnect();
   }, [reducedMotion, threshold]);
 
+  // Duration/easing come from the shared motion tokens in App.css.
   const revealStyle = reducedMotion
     ? {}
     : {
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(16px)",
-        transition: "opacity .4s ease, transform .4s ease",
+        transition: "opacity var(--sf-dur-slow) var(--sf-ease), transform var(--sf-dur-slow) var(--sf-ease)",
         transitionDelay: `${delay}s`,
       };
 
