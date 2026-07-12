@@ -777,7 +777,8 @@ Rules:
 - NEVER correct the learner's mistakes or comment on their Spanish. Just respond to what they meant and keep the conversation moving.
 - If they make an error, understand their intent and react naturally, like a patient native speaker would.
 - Ask a follow-up question to keep them talking.
-- Do not use any emojis, emoticons, or symbols. Reply in plain text only — your reply will be read aloud.`;
+- Do not use any emojis, emoticons, or symbols. Reply in plain text only — your reply will be read aloud.
+- Always use correct Spanish orthography: opening ¿ and ¡, and all accent marks (á, é, í, ó, ú, ñ). Never omit them for simplicity.`;
 
     const res = await fetch("/api/chat", {
       method: "POST",
@@ -852,7 +853,8 @@ Rules:
     const system = `You are a kind, sharp Spanish coach reviewing a conversation a learner just had.
 Return ONLY valid JSON, no markdown, no preamble, in this exact shape:
 {"encouragement":"one warm sentence on what they did well","fixes":[{"said":"what the learner said","better":"the natural way to say it","why":"short plain-English reason"}],"phrase":"one useful phrase to try next time"}
-Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say so kindly in encouragement and return fewer fixes.`;
+Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say so kindly in encouragement and return fewer fixes.
+In all Spanish text you write, always use correct Spanish orthography: opening ¿ and ¡, and all accent marks (á, é, í, ó, ú, ñ). Never omit them for simplicity.`;
 
     try {
       const res = await fetch("/api/chat", {
