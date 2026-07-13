@@ -220,6 +220,142 @@ const LEVEL_BADGE = {
   C2: { text: "#3B4ABB", bg: "#ECEFFE" },
 };
 
+// ── Mobile app waitlist (landing page) ───────────────────────────────────────
+// Email-only signup. Submitting IS the consent — the purpose statement sits
+// directly under the field. Success and duplicate submissions render the same
+// confirmation, so nothing leaks about whether an address was already on the
+// list. State is local; the row is written server-side by /api/waitlist.
+function WaitlistSection() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [joined, setJoined] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), consent: true }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          res.status === 429
+            ? "Too many attempts — please try again in a little while."
+            : "Something went wrong — please try again."
+        );
+      }
+      setJoined(true); // {already:true} intentionally renders identically
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Reveal threshold={0.2} style={{ marginTop: 72 }}>
+      <div
+        style={{
+          background: T.surfaceWarm,
+          border: `1px solid ${T.border}`,
+          borderRadius: T.card,
+          padding: "36px 28px",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.15,
+            margin: "0 0 8px",
+            color: T.text,
+          }}
+        >
+          Speak First is coming to your pocket
+        </h2>
+        <p style={{ fontSize: 15, lineHeight: 1.6, color: T.textSub, margin: "0 0 22px", maxWidth: 420 }}>
+          Join the waitlist for the mobile app. Be the first in, shape what we build.
+        </p>
+
+        {/* Fixed-height slot: the form → confirmation swap never shifts layout */}
+        <div style={{ minHeight: 104 }}>
+          {joined ? (
+            <div
+              className="sf-msg-in"
+              style={{ display: "flex", alignItems: "center", gap: 10, color: T.known, fontSize: 16, fontWeight: 600, padding: "12px 0" }}
+            >
+              <Check size={20} /> You're on the list.
+            </div>
+          ) : (
+            <>
+              <form onSubmit={submit} style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  aria-label="Email address"
+                  disabled={loading}
+                  style={{
+                    flex: "1 1 220px",
+                    padding: "13px 16px",
+                    fontSize: 15,
+                    fontFamily: "inherit",
+                    color: T.text,
+                    background: T.surface,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: T.pill,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`sf-btn-primary${loading ? " sf-btn-loading" : ""}`}
+                  style={{
+                    position: "relative",
+                    background: T.accent,
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: T.pill,
+                    padding: "13px 24px",
+                    fontSize: 15,
+                    fontWeight: 700,
+                    fontFamily: "inherit",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span className="sf-btn-label">Join the waitlist</span>
+                  <span className="sf-btn-spinner" aria-hidden="true" />
+                </button>
+              </form>
+
+              {/* Inline error — expands/fades, never pops */}
+              <div className={`sf-field-msg${error ? " sf-field-msg--show" : ""}`} aria-live="polite">
+                <div>
+                  <div style={{ fontSize: 13, color: T.accent, paddingTop: 8 }}>{error || " "}</div>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 12.5, lineHeight: 1.55, color: T.textSub, margin: "10px 0 0" }}>
+                We'll only email you about the mobile app launch.
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
 // ── Landing page ─────────────────────────────────────────────────────────────
 function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) {
   const [navScrolled, setNavScrolled] = useState(false);
@@ -552,6 +688,9 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
           </p>
         )}
       </Reveal>
+
+      {/* ── Mobile app waitlist ──────────────────────── */}
+      <WaitlistSection />
     </div>
   );
 }
