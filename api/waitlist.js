@@ -6,12 +6,49 @@
 //
 // Guards (shared with the other routes via _guard.js): origin allow-list,
 // per-IP Upstash rate limit (5/hour, fail-open when env vars are missing).
-// Inserts use the service role key — server-side only, never in the client.
+// After the format check, the domain must resolve MX (or A as a fallback) —
+// the rejection message is identical to a format failure, so nothing reveals
+// that DNS was consulted. DNS slower than 3s fails OPEN: never lose a real
+// signup to slow DNS. Inserts use the service role key — server-side only.
+//
+// Manual cleanup of test rows (paste into the Supabase SQL editor, edit the list):
+//   delete from public.waitlist where email in ('test1@example.com', 'test2@example.com');
 
 import { checkOrigin, rateLimit } from "./_guard.js";
 import { createClient } from "@supabase/supabase-js";
+import { promises as dns } from "node:dns";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const INVALID_EMAIL_MSG = "Please enter a valid email address";
+
+// true  = domain can receive mail (MX, or A-record fallback)
+// false = definitively cannot
+// On timeout (>3s) returns true — fail open.
+async function domainAcceptsMail(domain) {
+  const lookup = (async () => {
+    try {
+      const mx = await dns.resolveMx(domain);
+      if (mx && mx.length > 0) return true;
+    } catch {
+      /* fall through to A-record check */
+    }
+    try {
+      // Some small domains receive mail directly on an A record.
+      const a = await dns.resolve4(domain);
+      return Array.isArray(a) && a.length > 0;
+    } catch {
+      return false;
+    }
+  })();
+
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve("timeout"), 3000);
+  });
+  const result = await Promise.race([lookup, timeout]);
+  clearTimeout(timer);
+  return result === "timeout" ? true : result;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -28,13 +65,17 @@ export default async function handler(req, res) {
   }
 
   const { email, consent } = req.body || {};
-  if (
-    typeof email !== "string" ||
-    email.length > 320 ||
-    !EMAIL_RE.test(email.trim()) ||
-    consent !== true
-  ) {
+  if (consent !== true) {
     return res.status(400).json({ error: "Invalid request" });
+  }
+  if (typeof email !== "string" || email.length > 320 || !EMAIL_RE.test(email.trim())) {
+    return res.status(400).json({ error: INVALID_EMAIL_MSG });
+  }
+
+  // MX/A lookup on the domain — same error copy as a format failure.
+  const domain = email.trim().toLowerCase().split("@")[1];
+  if (!(await domainAcceptsMail(domain))) {
+    return res.status(400).json({ error: INVALID_EMAIL_MSG });
   }
 
   let sb;

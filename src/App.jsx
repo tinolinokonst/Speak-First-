@@ -242,9 +242,12 @@ function WaitlistSection() {
         body: JSON.stringify({ email: email.trim(), consent: true }),
       });
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
         throw new Error(
           res.status === 429
             ? "Too many attempts — please try again in a little while."
+            : res.status === 400 && data.error
+            ? data.error // e.g. "Please enter a valid email address"
             : "Something went wrong — please try again."
         );
       }
