@@ -46,7 +46,17 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: { coach: 1024, translate: 150, word: 60, hint: 150, warmup: 350 }[kind] ?? 300,
-        system,
+        // Prompt caching: the client still sends `system` as a plain string;
+        // wrapping it in a cache_control block here lets Anthropic reuse the
+        // prompt prefix across calls (persona prompts repeat every turn of a
+        // conversation, and the coach prompt repeats across sessions).
+        system: [
+          {
+            type: "text",
+            text: system,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         messages,
       }),
     });
@@ -57,6 +67,9 @@ export default async function handler(req, res) {
       console.error("Anthropic error:", data);
       return res.status(502).json({ error: "Upstream error" });
     }
+
+    // Cache performance check — cache_read_input_tokens > 0 means a hit.
+    console.log("Anthropic usage:", JSON.stringify(data.usage));
 
     const text = (data.content || [])
       .filter((b) => b.type === "text")
