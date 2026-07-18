@@ -99,7 +99,9 @@ export default async function handler(req, res) {
     if (error.code === "23505") {
       return res.status(200).json({ ok: true, already: true });
     }
-    console.error("[waitlist] insert failed:", error);
+    // Log code + message only — Postgres error `details` can echo the failing
+    // row values (an email address), which must never land in Vercel logs.
+    console.error("[waitlist] insert failed:", error.code, error.message);
     return res.status(500).json({ error: "Server error" });
   }
 

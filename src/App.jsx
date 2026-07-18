@@ -25,6 +25,7 @@ import SettingsPage from "./SettingsPage.jsx";
 import WhyPage from "./WhyPage.jsx";
 import Reveal from "./Reveal.jsx";
 import DemoPanel from "./DemoPanel.jsx";
+import { PrivacyPage, TermsPage } from "./LegalPages.jsx";
 import TextReplyInput from "./TextReplyInput.jsx";
 import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
 import { WARMUP_PHRASES } from "./warmupPhrases.js";
@@ -220,6 +221,38 @@ const LEVEL_BADGE = {
   C2: { text: "#3B4ABB", bg: "#ECEFFE" },
 };
 
+// ── Site footer ──────────────────────────────────────────────────────────────
+// Plain anchors: /privacy and /terms are URL routes, so a full navigation is
+// correct (and works from any screen, logged in or out).
+function Footer() {
+  return (
+    <footer
+      style={{
+        borderTop: `1px solid ${T.border}`,
+        marginTop: 48,
+        padding: "24px 0 32px",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 16,
+        alignItems: "center",
+        justifyContent: "space-between",
+        fontSize: 13,
+        color: T.textSub,
+      }}
+    >
+      <span>© {new Date().getFullYear()} Speak First</span>
+      <span style={{ display: "flex", gap: 18 }}>
+        <a className="sf-nav-link" href="/privacy" style={{ color: T.textSub, textDecoration: "none" }}>
+          Privacy Policy
+        </a>
+        <a className="sf-nav-link" href="/terms" style={{ color: T.textSub, textDecoration: "none" }}>
+          Terms
+        </a>
+      </span>
+    </footer>
+  );
+}
+
 // ── Mobile app waitlist (landing page) ───────────────────────────────────────
 // Email-only signup. Submitting IS the consent — the purpose statement sits
 // directly under the field. Success and duplicate submissions render the same
@@ -349,7 +382,10 @@ function WaitlistSection() {
               </div>
 
               <p style={{ fontSize: 12.5, lineHeight: 1.55, color: T.textSub, margin: "10px 0 0" }}>
-                We'll only email you about the mobile app launch.
+                We'll only email you about the mobile app launch. See our{" "}
+                <a href="/privacy" style={{ color: T.textSub, textDecorationColor: "rgba(107,101,96,.5)" }}>
+                  Privacy Policy
+                </a>.
               </p>
             </>
           )}
@@ -455,12 +491,27 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
             fontSize: 17,
             lineHeight: 1.65,
             color: T.textSub,
-            margin: "0 0 36px",
+            margin: "0 0 12px",
             maxWidth: 420,
           }}
         >
           Your AI conversation partner never interrupts or corrects you mid-sentence.
           Say whatever Spanish you can — then see the three things most worth fixing.
+        </p>
+        {/* Trust line — wording verified by the storage audit; do not embellish */}
+        <p
+          className="sf-fade-up"
+          style={{
+            animationDelay: ".14s",
+            fontSize: 13,
+            lineHeight: 1.6,
+            color: T.textSub,
+            margin: "0 0 34px",
+            maxWidth: 420,
+          }}
+        >
+          Your practice sessions are never saved — they exist only in your browser tab and
+          disappear when you close it.
         </p>
         <div
           className="sf-fade-up"
@@ -699,7 +750,12 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
 }
 
 export default function App() {
-  const [screen, setScreen] = useState("landing"); // landing | auth | home | warmup | chat | feedback | settings | why
+  // landing | auth | home | warmup | chat | feedback | settings | why | privacy | terms
+  // /privacy and /terms are URL-routed (vercel.json rewrites them to index.html).
+  const [screen, setScreen] = useState(() => {
+    const p = window.location.pathname;
+    return p === "/privacy" ? "privacy" : p === "/terms" ? "terms" : "landing";
+  });
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -2389,6 +2445,13 @@ In all Spanish text you write, always use correct Spanish orthography: opening �
             onStartPracticing={handleStartPracticing}
           />
         )}
+
+        {/* ── LEGAL PAGES (URL-routed) ──────────── */}
+        {screen === "privacy" && <PrivacyPage />}
+        {screen === "terms" && <TermsPage />}
+
+        {/* Site-wide footer — omitted on the chat screen (fixed 100vh layout) */}
+        {screen !== "chat" && <Footer />}
       </div>
     </div>
   );

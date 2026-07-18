@@ -157,7 +157,8 @@ html {
 
 /* ─── Global focus ring ────────────────────────────────────────────────────
    Every interactive element gets a visible coral ring — WCAG 2.4.11. */
-button:focus-visible {
+button:focus-visible,
+a:focus-visible {
   outline: 2px solid #E8654E;
   outline-offset: 3px;
   border-radius: 6px;
