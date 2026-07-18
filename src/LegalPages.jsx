@@ -51,8 +51,8 @@ export function PrivacyPage() {
     <LegalShell title="Privacy Policy">
       <H2>Who we are</H2>
       <P>
-        Speak First is operated by [YOUR NAME] as an individual, who acts as the data
-        controller for the personal data described here. Contact: [YOUR EMAIL].
+        Speak First is operated by Konstantin Lind as an individual, who acts as the data
+        controller for the personal data described here. Contact: Konstantin Lind.
       </P>
 
       <H2>What we store</H2>
@@ -111,7 +111,7 @@ export function PrivacyPage() {
       <P>
         You can access, correct, or delete your data. Account deletion is self-serve in your
         account settings and takes effect immediately. For a copy of your data, or any other
-        request, email [YOUR EMAIL]. You also have the right to lodge a complaint with a data
+        request, email tinolind066@gmail.com. You also have the right to lodge a complaint with a data
         protection supervisory authority.
       </P>
 
