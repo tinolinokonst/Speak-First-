@@ -52,7 +52,7 @@ export function PrivacyPage() {
       <H2>Who we are</H2>
       <P>
         Speak First is operated by Konstantin Lind as an individual, who acts as the data
-        controller for the personal data described here. Contact: Konstantin Lind.
+        controller for the personal data described here. Contact: tinolind066@gmail.com.
       </P>
 
       <H2>What we store</H2>
@@ -138,7 +138,7 @@ export function PrivacyPage() {
       <H2>Changes</H2>
       <P>
         If this policy changes, we'll update this page and the date above. Questions:
-        [YOUR EMAIL].
+        tino.rosenkrantz@gmail.com.
       </P>
     </LegalShell>
   );
@@ -192,12 +192,12 @@ export function TermsPage() {
       {/* LEGAL REVIEW NEEDED — governing law and jurisdiction. */}
       <H2>Governing law</H2>
       <P>
-        These terms are governed by the laws of [JURISDICTION], and disputes are subject to
-        the courts of [JURISDICTION].
+        These terms are governed by the laws of Switzerland, and disputes are subject to
+        the courts of the Nyon district.
       </P>
 
       <H2>Contact</H2>
-      <P>Questions about these terms: [YOUR EMAIL].</P>
+      <P>Questions about these terms: tinolind066@gmail.com.</P>
     </LegalShell>
   );
 }
