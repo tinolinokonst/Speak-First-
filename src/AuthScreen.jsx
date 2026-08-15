@@ -146,7 +146,7 @@ export default function AuthScreen({ onSuccess }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          minLength={6}
+          minLength={8}
           className={shakeField === "password" ? "sf-shake" : ""}
           style={inputStyle}
         />
@@ -194,8 +194,8 @@ function friendlyError(msg) {
     return "Email or password is incorrect.";
   if (m.includes("email already registered") || m.includes("user already registered"))
     return "An account with that email already exists. Try logging in instead.";
-  if (m.includes("password should be"))
-    return "Password must be at least 6 characters.";
+  if (m.includes("password should be") || m.includes("password must be"))
+    return "Password must be at least 8 characters.";
   if (m.includes("email not confirmed"))
     return "Please confirm your email address before logging in.";
   if (m.includes("rate limit"))

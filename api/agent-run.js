@@ -24,6 +24,7 @@
 //   VITE_SUPABASE_URL (already set), SUPABASE_SERVICE_ROLE_KEY (already set)
 
 import { createClient } from "@supabase/supabase-js";
+import { rateLimit, safeEqual } from "./_guard.js";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -338,7 +339,18 @@ Write four short sections, each a paragraph or tight bullet list, separated by b
 const JOB_NAMES = new Set(["research", "drafts", "daily_email", "weekly_email"]);
 
 export default async function handler(req, res) {
-  if (!process.env.CRON_SECRET || (req.headers.authorization || "") !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Bound brute-force attempts against CRON_SECRET. No origin check here: Vercel
+  // cron requests carry no Origin header.
+  const { success } = await rateLimit(req, "agent-run", 10, "1 h", { failClosed: true });
+  if (!success) {
+    return res.status(429).json({ error: "Too many requests" });
+  }
+
+  // Constant-time comparison — a plain !== leaks secret length/prefix via timing.
+  if (
+    !process.env.CRON_SECRET ||
+    !safeEqual(req.headers.authorization || "", `Bearer ${process.env.CRON_SECRET}`)
+  ) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

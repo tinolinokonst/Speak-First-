@@ -8,17 +8,30 @@
 //   VITE_SUPABASE_URL          — already set for the frontend; reused here
 
 import { createClient } from "@supabase/supabase-js";
+import { checkOrigin, rateLimit, requireUser } from "./_guard.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
 
-  // Extract the user's access token from the Authorization header.
-  const authHeader = req.headers["authorization"] || "";
-  const accessToken = authHeader.replace(/^Bearer\s+/i, "").trim();
-  if (!accessToken) {
-    return res.status(401).json({ error: "Missing authorization token" });
+  if (!checkOrigin(req)) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
+  // Defense in depth: a valid token is already required below, but this bounds
+  // token-guessing and repeated-deletion attempts from a single source.
+  const { success } = await rateLimit(req, "delete-account", 5, "1 h", {
+    failClosed: true,
+  });
+  if (!success) {
+    return res.status(429).json({ error: "Too many requests — try again later." });
+  }
+
+  // Verify the token server-side — never trust the client to say who they are.
+  const user = await requireUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "Invalid or expired token" });
   }
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL;
@@ -30,20 +43,16 @@ export default async function handler(req, res) {
   }
 
   // Admin client — uses the service role key, never leaves the server.
+  // Deleting the auth user cascades to public.completions via its FK
+  // (see supabase/migrations/completions_table.sql).
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Verify the token and get the user identity — never trust the client to say who they are.
-  const { data: { user }, error: userErr } = await admin.auth.getUser(accessToken);
-  if (userErr || !user) {
-    return res.status(401).json({ error: "Invalid or expired token" });
-  }
-
   // Delete only the verified user — not any user ID the client might send.
   const { error: deleteErr } = await admin.auth.admin.deleteUser(user.id);
   if (deleteErr) {
-    console.error("Delete user error:", deleteErr);
+    console.error("Delete user error:", deleteErr.message);
     return res.status(500).json({ error: "Failed to delete account" });
   }
 

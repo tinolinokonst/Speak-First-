@@ -8,7 +8,7 @@
 //   - Strict per-IP rate limit (15 requests/hour ≈ 3 demo sessions), failing
 //     open with a console warning when Upstash env vars are missing.
 
-import { checkOrigin, rateLimit, checkInputCaps } from "./_guard.js";
+import { checkOrigin, rateLimit, checkInputCaps, sanitizeMessages } from "./_guard.js";
 
 const SOFIA_SYSTEM = `You are Sofía, a warm and friendly Spanish conversation partner meeting someone for the very first time. This is a tiny public demo of a language practice app.
 
@@ -33,7 +33,8 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const { success } = await rateLimit(req, "demo", 15, "1 h");
+  // Billable endpoint: never drop limits entirely if Upstash is unavailable.
+  const { success } = await rateLimit(req, "demo", 15, "1 h", { failClosed: true });
   if (!success) {
     return res
       .status(429)
@@ -56,10 +57,7 @@ export default async function handler(req, res) {
   }
 
   // Only pass through role + string content; drop anything else the client sent.
-  const clean = messages.map((m) => ({
-    role: m.role === "assistant" ? "assistant" : "user",
-    content: String(m.content ?? "").slice(0, 500),
-  }));
+  const clean = sanitizeMessages(messages, 500);
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -80,7 +78,8 @@ export default async function handler(req, res) {
     const data = await r.json();
 
     if (!r.ok) {
-      console.error("Anthropic error (demo):", data);
+      // Error type only — the payload contains the visitor's conversation.
+      console.error("Anthropic error (demo):", r.status, data?.error?.type || "unknown");
       return res.status(502).json({ error: "Upstream error" });
     }
 
@@ -92,7 +91,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ text });
   } catch (e) {
-    console.error(e);
+    console.error("[demo] request failed:", e?.message || e);
     return res.status(500).json({ error: "Server error" });
   }
 }

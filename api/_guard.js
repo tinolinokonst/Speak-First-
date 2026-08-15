@@ -1,38 +1,54 @@
 // api/_guard.js — shared request guards for the serverless endpoints.
 // Files prefixed with "_" are NOT exposed as routes by Vercel.
 //
-// Three layers:
-//   1. checkOrigin  — browser requests must come from our own pages (403 otherwise)
-//   2. rateLimit    — per-IP sliding-window limits via Upstash Redis.
-//                     FAILS OPEN with a console warning when the Upstash env vars
-//                     (UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN) are missing
-//                     or the check itself errors — the API keeps working, just unlimited.
-//   3. checkInputCaps — bound message count and total characters so a hostile
-//                     client can't stuff huge prompts through the proxy.
+// Layers:
+//   1. checkOrigin     — exact-match allow-list (no wildcards). 403 otherwise.
+//   2. rateLimit       — per-key sliding window via Upstash Redis, with an
+//                        in-process backstop so the paid endpoints are never
+//                        completely unprotected (see failClosed below).
+//   3. checkInputCaps  — bound message count and total characters.
+//   4. requireUser     — verify a Supabase access token server-side.
+//   5. safeEqual       — constant-time secret comparison.
 
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { createClient } from "@supabase/supabase-js";
+import { timingSafeEqual } from "node:crypto";
 
-// Production + Vercel preview deployments for this project.
-const PROD_ORIGIN_RE = /^https:\/\/speak-first[a-z0-9-]*\.vercel\.app$/;
-// Local Vite dev server on any port.
+// ── 1. Origin ────────────────────────────────────────────────────────────────
+// Exact matches only. The previous /speak-first[a-z0-9-]*\.vercel\.app/ wildcard
+// also matched OTHER people's Vercel projects (anyone could register
+// speak-first-x.vercel.app and call this API from their own page).
+// Vercel injects the deployment's own hostnames, so previews stay allowed
+// without a wildcard.
 const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
-export function checkOrigin(req) {
-  const origin = req.headers.origin || "";
-  // Optional extra origins (e.g. a custom domain), comma-separated env var.
+function allowedOrigins() {
+  const fromEnv = [
+    process.env.VERCEL_PROJECT_PRODUCTION_URL, // e.g. speak-first.vercel.app
+    process.env.VERCEL_URL,                    // this exact deployment
+    process.env.VERCEL_BRANCH_URL,             // branch alias for previews
+  ]
+    .filter(Boolean)
+    .map((h) => `https://${h}`);
+
   const extra = (process.env.ALLOWED_ORIGINS || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return (
-    PROD_ORIGIN_RE.test(origin) ||
-    LOCAL_ORIGIN_RE.test(origin) ||
-    extra.includes(origin)
-  );
+
+  return [...fromEnv, ...extra];
+}
+
+export function checkOrigin(req) {
+  const origin = req.headers.origin || "";
+  if (LOCAL_ORIGIN_RE.test(origin)) return true;
+  return allowedOrigins().includes(origin);
 }
 
 export function clientIp(req) {
+  // On Vercel, x-forwarded-for is set by the platform and cannot be spoofed by
+  // the client. If this ever runs behind a different proxy, revisit this.
   return (
     (req.headers["x-forwarded-for"] || "").split(",")[0].trim() ||
     req.headers["x-real-ip"] ||
@@ -41,25 +57,69 @@ export function clientIp(req) {
   );
 }
 
-// Limiter instances are cached at module level so warm invocations reuse them.
+// ── 2. Rate limiting ─────────────────────────────────────────────────────────
 const limiters = {};
 
+// Per-instance fallback. Serverless instances are ephemeral so this is weaker
+// than Redis, but it turns "completely unlimited" into "bounded per instance"
+// when Upstash is unset or erroring — which matters for endpoints that spend
+// money on every call.
+const memBuckets = new Map();
+
+function windowMs(window) {
+  const [n, unit] = String(window).trim().split(/\s+/);
+  const mult = { s: 1e3, m: 6e4, h: 3.6e6, d: 8.64e7 }[unit?.[0]] ?? 6e4;
+  return (parseInt(n, 10) || 1) * mult;
+}
+
+function memoryLimit(key, limit, window) {
+  const now = Date.now();
+  const ms = windowMs(window);
+  const b = memBuckets.get(key);
+  if (!b || now > b.resetAt) {
+    memBuckets.set(key, { count: 1, resetAt: now + ms });
+    if (memBuckets.size > 5000) {
+      for (const [k, v] of memBuckets) if (now > v.resetAt) memBuckets.delete(k);
+    }
+    return { success: true };
+  }
+  b.count += 1;
+  return { success: b.count <= limit };
+}
+
 /**
- * @param {string} name    unique bucket name, e.g. "chat" or "demo"
- * @param {number} limit   max requests per window
- * @param {string} window  Upstash duration string, e.g. "1 m" or "1 h"
- * @returns {{success: boolean}} success=true when allowed (or failing open)
+ * @param {string} name        bucket name, e.g. "chat"
+ * @param {number} limit       max requests per window
+ * @param {string} window      Upstash duration string, e.g. "1 m" / "1 h"
+ * @param {object} [opts]
+ * @param {string} [opts.key]        identity to limit on (defaults to client IP).
+ *                                   Pass a user id for authenticated routes —
+ *                                   far more meaningful than an IP.
+ * @param {boolean} [opts.failClosed] when Upstash is unavailable, fall back to
+ *                                   the in-process limiter instead of allowing
+ *                                   everything. Use on any endpoint that costs
+ *                                   money per request.
  */
-export async function rateLimit(req, name, limit, window) {
+export async function rateLimit(req, name, limit, window, opts = {}) {
+  const key = opts.key || clientIp(req);
+  const bucketKey = `${name}:${key}`;
+
   if (
     !process.env.UPSTASH_REDIS_REST_URL ||
     !process.env.UPSTASH_REDIS_REST_TOKEN
   ) {
+    if (opts.failClosed) {
+      console.warn(
+        `[rate-limit:${name}] Upstash not configured — using in-process limiter. Set UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN for durable limits.`
+      );
+      return memoryLimit(bucketKey, limit, window);
+    }
     console.warn(
-      `[rate-limit:${name}] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN not set — failing open (no rate limiting).`
+      `[rate-limit:${name}] Upstash not configured — allowing request (non-billable endpoint).`
     );
     return { success: true };
   }
+
   try {
     if (!limiters[name]) {
       limiters[name] = new Ratelimit({
@@ -68,21 +128,20 @@ export async function rateLimit(req, name, limit, window) {
         prefix: `rl:${name}`,
       });
     }
-    return await limiters[name].limit(clientIp(req));
+    return await limiters[name].limit(key);
   } catch (e) {
-    console.warn(
-      `[rate-limit:${name}] check failed — failing open:`,
-      e?.message || e
-    );
-    return { success: true };
+    console.warn(`[rate-limit:${name}] check failed:`, e?.message || e);
+    // Degrade to the in-process limiter rather than dropping all limits.
+    return opts.failClosed
+      ? memoryLimit(bucketKey, limit, window)
+      : { success: true };
   }
 }
 
+// ── 3. Input caps ────────────────────────────────────────────────────────────
 const MAX_MESSAGES = 40;
 const MAX_TOTAL_CHARS = 8000;
 
-/** True when the payload is within bounds. `extraText` (e.g. the system
- *  prompt) counts toward the character budget too. */
 export function checkInputCaps(messages, extraText = "") {
   if (!Array.isArray(messages) || messages.length > MAX_MESSAGES) return false;
   let total = typeof extraText === "string" ? extraText.length : 0;
@@ -95,4 +154,51 @@ export function checkInputCaps(messages, extraText = "") {
     if (total > MAX_TOTAL_CHARS) return false;
   }
   return true;
+}
+
+/** Normalize to Anthropic's shape and drop anything else the client sent. */
+export function sanitizeMessages(messages, maxLen = 4000) {
+  return messages.map((m) => ({
+    role: m?.role === "assistant" ? "assistant" : "user",
+    content: String(m?.content ?? "").slice(0, maxLen),
+  }));
+}
+
+// ── 4. Auth ──────────────────────────────────────────────────────────────────
+let adminClient = null;
+
+function admin() {
+  if (!adminClient) {
+    const url = process.env.VITE_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) throw new Error("Supabase env vars missing");
+    adminClient = createClient(url, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return adminClient;
+}
+
+/** Verifies the Bearer access token. Returns the user object, or null when the
+ *  token is missing/invalid. Never trust a client-supplied user id. */
+export async function requireUser(req) {
+  const token = (req.headers.authorization || "")
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+  if (!token) return null;
+  try {
+    const { data: { user }, error } = await admin().auth.getUser(token);
+    return error || !user ? null : user;
+  } catch (e) {
+    console.error("[auth] token verification failed:", e?.message || e);
+    return null;
+  }
+}
+
+// ── 5. Constant-time secret comparison ───────────────────────────────────────
+export function safeEqual(a, b) {
+  const bufA = Buffer.from(String(a ?? ""), "utf8");
+  const bufB = Buffer.from(String(b ?? ""), "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
 }

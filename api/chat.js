@@ -2,15 +2,26 @@
 // The browser NEVER sees your Anthropic key. It calls /api/chat; this file
 // attaches the secret key (stored as an env var in Vercel) and forwards to Claude.
 //
-// Two modes, set by `kind` in the request body:
-//   "conversation" -> the in-character partner (never corrects)
-//   "coach"        -> the end-of-session reviewer (returns JSON feedback)
-//
-// Hardening: origin allow-list (403), per-IP rate limit via Upstash
-// (20 req/min, fails open when env vars are missing), and input caps
-// (max 40 messages / 8000 total chars → 400). See api/_guard.js.
+// SECURITY MODEL (hardened):
+//   1. Origin allow-list      — exact matches only (403).
+//   2. Authentication         — a valid Supabase access token is REQUIRED (401).
+//                               Previously this endpoint was fully anonymous.
+//   3. Server-side prompts    — the client sends { kind, scenarioId, messages };
+//                               it can no longer supply `system`. This is what
+//                               stops the endpoint being used as a general
+//                               purpose Claude proxy on our API key.
+//   4. Rate limit             — 20/min PER USER (not per IP), fail-closed onto an
+//                               in-process limiter if Upstash is unavailable.
+//   5. Input caps             — max 40 messages / 8000 chars, content truncated.
 
-import { checkOrigin, rateLimit, checkInputCaps } from "./_guard.js";
+import {
+  checkOrigin,
+  rateLimit,
+  checkInputCaps,
+  sanitizeMessages,
+  requireUser,
+} from "./_guard.js";
+import { buildSystem, MAX_TOKENS } from "./_prompts.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -21,19 +32,37 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
-  const { success } = await rateLimit(req, "chat", 20, "1 m");
+  const user = await requireUser(req);
+  if (!user) {
+    return res.status(401).json({ error: "Sign in to continue" });
+  }
+
+  const { success } = await rateLimit(req, "chat", 20, "1 m", {
+    key: user.id,
+    failClosed: true,
+  });
   if (!success) {
     return res.status(429).json({ error: "Too many requests — slow down a little." });
   }
 
-  const { kind, system, messages } = req.body || {};
-  if (!system || !messages) {
-    return res.status(400).json({ error: "Missing system or messages" });
+  const { kind, scenarioId, messages } = req.body || {};
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "Missing messages" });
+  }
+
+  // The system prompt is chosen here, never supplied by the caller. An unknown
+  // kind (or a conversation for an unknown scenario) is rejected outright.
+  const system = buildSystem(kind, scenarioId);
+  if (!system) {
+    return res.status(400).json({ error: "Unknown request kind" });
   }
 
   if (!checkInputCaps(messages, system)) {
     return res.status(400).json({ error: "Payload too large" });
   }
+
+  const clean = sanitizeMessages(messages);
 
   try {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
@@ -45,11 +74,10 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: { coach: 1024, translate: 150, word: 60, hint: 150, warmup: 350 }[kind] ?? 300,
-        // Prompt caching: the client still sends `system` as a plain string;
-        // wrapping it in a cache_control block here lets Anthropic reuse the
-        // prompt prefix across calls (persona prompts repeat every turn of a
-        // conversation, and the coach prompt repeats across sessions).
+        max_tokens: MAX_TOKENS[kind] ?? 300,
+        // Prompt caching: wrapping the system prompt in a cache_control block
+        // lets Anthropic reuse the prefix across calls (persona prompts repeat
+        // every turn; the coach prompt repeats across sessions).
         system: [
           {
             type: "text",
@@ -57,14 +85,16 @@ export default async function handler(req, res) {
             cache_control: { type: "ephemeral" },
           },
         ],
-        messages,
+        messages: clean,
       }),
     });
 
     const data = await r.json();
 
     if (!r.ok) {
-      console.error("Anthropic error:", data);
+      // Log the upstream error type only — never the payload, which contains
+      // the learner's conversation.
+      console.error("Anthropic error:", r.status, data?.error?.type || "unknown");
       return res.status(502).json({ error: "Upstream error" });
     }
 
@@ -79,7 +109,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ text });
   } catch (e) {
-    console.error(e);
+    console.error("[chat] request failed:", e?.message || e);
     return res.status(500).json({ error: "Server error" });
   }
 }

@@ -36,8 +36,6 @@ const SCENARIOS = [
     id: "cafe",
     title: "Order at a café",
     sub: "Madrid, mid-morning",
-    persona:
-      "You are Marta, a warm but busy barista at a café in Madrid. You only speak Spanish. Greet the customer and take their order naturally.",
     opener: "¡Hola! Buenos días. ¿Qué te pongo?",
     level: "A1",
     difficulty: 1,
@@ -47,8 +45,6 @@ const SCENARIOS = [
     id: "groceries",
     title: "Buying groceries",
     sub: "Local market, Spain",
-    persona:
-      "You are Carmen, a friendly vendor at a small neighborhood grocery store in Spain. You only speak Spanish. Help the customer find items, weigh produce, and total up their purchase. Keep it simple and warm.",
     opener: "¡Hola! ¿Qué necesitas hoy?",
     level: "A1",
     difficulty: 2,
@@ -57,8 +53,6 @@ const SCENARIOS = [
     id: "introductions",
     title: "Introducing yourself",
     sub: "Social event, Spain",
-    persona:
-      "You are Sofía, a friendly person meeting someone new at a casual social event in Spain. You only speak Spanish. Make small talk: ask their name, where they're from, what they do. Keep it simple, warm, and encouraging.",
     opener: "¡Hola! Creo que no nos conocemos. ¿Cómo te llamas?",
     level: "A1",
     difficulty: 3,
@@ -67,8 +61,6 @@ const SCENARIOS = [
     id: "directions",
     title: "Asking for directions",
     sub: "Street corner, Seville",
-    persona:
-      "You are Pablo, a relaxed local on the street in Seville. You only speak Spanish. A tourist stops you to ask how to get somewhere. Give simple directions and be patient and encouraging.",
     opener: "¿Sí? ¿En qué te puedo ayudar?",
     level: "A2",
     difficulty: 4,
@@ -77,8 +69,6 @@ const SCENARIOS = [
     id: "friend",
     title: "Catch up with a friend",
     sub: "Weekend small talk",
-    persona:
-      "You are Lucía, an old friend catching up over coffee. You only speak Spanish. Be casual, curious, and chatty about each other's week.",
     opener: "¡Ey! Cuánto tiempo. ¿Qué tal todo?",
     level: "A2",
     difficulty: 5,
@@ -87,8 +77,6 @@ const SCENARIOS = [
     id: "clothing",
     title: "Shopping for clothes",
     sub: "Clothing shop, Madrid",
-    persona:
-      "You are Marco, a helpful clothing shop assistant in Madrid. You only speak Spanish. Help the customer find items, sizes, and colors, and handle trying on and paying. Keep it friendly and patient.",
     opener: "¡Buenas! ¿Buscas algo en particular?",
     level: "A2",
     difficulty: 6,
@@ -97,8 +85,6 @@ const SCENARIOS = [
     id: "doctor",
     title: "Doctor's appointment",
     sub: "Clinic, Mexico City",
-    persona:
-      "You are Dr. Ramírez, a kind general doctor in a clinic in Mexico City. You only speak Spanish. The patient has come in not feeling well. Ask about their symptoms, how long they've felt this way, and reassure them. Stay calm and professional.",
     opener: "Buenos días, pase y siéntese. Cuénteme, ¿qué le pasa?",
     level: "B1",
     difficulty: 7,
@@ -107,8 +93,6 @@ const SCENARIOS = [
     id: "interview",
     title: "Job interview",
     sub: "Marketing role, Bogotá",
-    persona:
-      "You are Diego, a friendly hiring manager interviewing a candidate for a junior marketing role in Bogotá. You only speak Spanish. Ask normal interview questions, one at a time.",
     opener: "Buenas. Gracias por venir. Cuéntame un poco sobre ti.",
     level: "B1",
     difficulty: 8,
@@ -117,8 +101,6 @@ const SCENARIOS = [
     id: "apartment",
     title: "Renting an apartment",
     sub: "Flat viewing, Valencia",
-    persona:
-      "You are Lucía Fernández, a landlord showing an apartment to a prospective tenant in Valencia. You only speak Spanish. Discuss the apartment, rent, deposit, contract terms, and answer the tenant's questions. Be professional and realistic, willing to negotiate a little.",
     opener: "Bienvenido. Pase, le enseño el piso. ¿Qué le gustaría saber?",
     level: "B2",
     difficulty: 9,
@@ -127,8 +109,6 @@ const SCENARIOS = [
     id: "complaint",
     title: "Making a complaint",
     sub: "Phone call, Mexico City",
-    persona:
-      "You are Andrés, a customer service representative at a phone/internet company in Mexico City. You only speak Spanish. The customer has a problem with their service or bill. Listen, ask clarifying questions, and try to resolve it professionally. Be polite but realistic — don't instantly give them everything they want.",
     opener: "Gracias por llamar. ¿En qué puedo ayudarle hoy?",
     level: "B2",
     difficulty: 10,
@@ -137,8 +117,6 @@ const SCENARIOS = [
     id: "debate",
     title: "Disagreeing in a debate",
     sub: "Coffee debate, anywhere",
-    persona:
-      "You are Elena, a sharp but respectful friend who loves a good debate over coffee. You only speak Spanish. Engage the learner in a friendly disagreement about an everyday topic (e.g. city vs country living, technology, food). Push back on their points to make them defend their view, but stay warm and never hostile.",
     opener: "Vale, te lo discuto: creo que vivir en la ciudad es mucho mejor que en el campo. ¿No estás de acuerdo?",
     level: "C1",
     difficulty: 11,
@@ -147,8 +125,6 @@ const SCENARIOS = [
     id: "deeper",
     title: "A deeper conversation",
     sub: "Long coffee, anywhere",
-    persona:
-      "You are Teresa, a thoughtful friend who enjoys discussing bigger ideas over a long coffee. You only speak Spanish, at a natural native pace using idioms and nuance. Engage the learner on an abstract topic (e.g. how technology is changing relationships, what makes a good life, whether cities or nature shape us more). Ask probing follow-up questions, express subtle opinions, and use natural expressions — treat them as a capable speaker.",
     opener: "Oye, llevo días dándole vueltas a una idea y quiero saber qué piensas: ¿crees que la tecnología nos acerca o en realidad nos aísla más?",
     level: "C2",
     difficulty: 12,
@@ -749,6 +725,23 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
   );
 }
 
+// ── Authenticated /api/chat helper ───────────────────────────────────────────
+// The server builds the system prompt from `kind` (+ `scenarioId`); the client
+// can no longer supply one. A valid Supabase access token is required, so the
+// endpoint can't be used as a general-purpose Claude proxy on our API key.
+async function apiChat(body) {
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  return fetch("/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 export default function App() {
   // landing | auth | home | warmup | chat | feedback | settings | why | privacy | terms
   // /privacy and /terms are URL-routed (vercel.json rewrites them to index.html).
@@ -913,13 +906,9 @@ export default function App() {
   async function fetchWarmupPhrases(s) {
     setWarmupPhrases((prev) => ({ ...prev, [s.id]: "loading" }));
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await apiChat({
           kind: "warmup",
-          system:
-            "You are a Spanish language teaching assistant. Return ONLY a JSON array — no prose, no code fences, no explanation. Do not include any emojis or symbols in the Spanish or English values.",
+          scenarioId: s.id,
           messages: [
             {
               role: "user",
@@ -930,7 +919,6 @@ export default function App() {
                 `[{"spanish":"...","english":"..."}]`,
             },
           ],
-        }),
       });
       if (!res.ok) throw new Error("API error");
       const { text } = await res.json();
@@ -961,31 +949,19 @@ export default function App() {
     }
   }
 
-  // ── Conversation call. The system prompt is the whole product. It stays in
-  // character and NEVER corrects mid-flow. Correction is saved for the coach.
+  // ── Conversation call. The system prompt is the whole product — it now lives
+  // server-side in api/_prompts.js (keyed by scenario id) so it can't be
+  // overridden by a caller. It stays in character and NEVER corrects mid-flow;
+  // correction is saved for the coach.
   async function getTutorReply(history) {
     const convo = history
       .map((m) => `${m.role === "user" ? "Learner" : "You"}: ${m.text}`)
       .join("\n");
-    const system = `${scenario.persona}
 
-Rules:
-- Reply ONLY in natural Spanish, 1-2 short sentences. This is spoken conversation.
-- Stay fully in character. Never break role.
-- NEVER correct the learner's mistakes or comment on their Spanish. Just respond to what they meant and keep the conversation moving.
-- If they make an error, understand their intent and react naturally, like a patient native speaker would.
-- Ask a follow-up question to keep them talking.
-- Do not use any emojis, emoticons, or symbols. Reply in plain text only — your reply will be read aloud.
-- Always use correct Spanish orthography: opening ¿ and ¡, and all accent marks (á, é, í, ó, ú, ñ). Never omit them for simplicity.`;
-
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        kind: "conversation",
-        system,
-        messages: [{ role: "user", content: convo + "\n\nYou:" }],
-      }),
+    const res = await apiChat({
+      kind: "conversation",
+      scenarioId: scenario.id,
+      messages: [{ role: "user", content: convo + "\n\nYou:" }],
     });
     if (!res.ok) throw new Error("API error");
     const { text } = await res.json();
@@ -1048,26 +1024,15 @@ Rules:
     const transcript = messages
       .map((m) => `${m.role === "user" ? "Learner" : "Partner"}: ${m.text}`)
       .join("\n");
-    const system = `You are a kind, sharp Spanish coach reviewing a conversation a learner just had.
-Return ONLY valid JSON, no markdown, no preamble, in this exact shape:
-{"encouragement":"one warm sentence on what they did well","fixes":[{"said":"what the learner said","better":"the natural way to say it","why":"short plain-English reason"}],"phrase":"one useful phrase to try next time"}
-Pick at MOST 3 fixes, the highest-impact ones. If the learner barely spoke, say so kindly in encouragement and return fewer fixes.
-In all Spanish text you write, always use correct Spanish orthography: opening ¿ and ¡, and all accent marks (á, é, í, ó, ú, ñ). Never omit them for simplicity.`;
-
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "coach",
-          system,
-          messages: [
-            {
-              role: "user",
-              content: `Here is the conversation:\n${transcript}`,
-            },
-          ],
-        }),
+      const res = await apiChat({
+        kind: "coach",
+        messages: [
+          {
+            role: "user",
+            content: `Here is the conversation:\n${transcript}`,
+          },
+        ],
       });
       if (!res.ok) throw new Error("API error");
       const { text } = await res.json();
@@ -1088,15 +1053,9 @@ In all Spanish text you write, always use correct Spanish orthography: opening �
   async function fetchTranslation(msgIdx, text) {
     setTranslations((prev) => ({ ...prev, [msgIdx]: "loading" }));
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "translate",
-          system:
-            "Translate the following Spanish to natural English. Return ONLY the translation, no explanation.",
-          messages: [{ role: "user", content: text }],
-        }),
+      const res = await apiChat({
+        kind: "translate",
+        messages: [{ role: "user", content: text }],
       });
       if (!res.ok) throw new Error();
       const { text: t } = await res.json();
@@ -1124,20 +1083,14 @@ In all Spanish text you write, always use correct Spanish orthography: opening �
     const key = `${msgIdx}::${word}`;
     setWordMeanings((prev) => ({ ...prev, [key]: "loading" }));
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "word",
-          system:
-            "You help Spanish learners understand individual words. Given a Spanish sentence and one word from it, give a very short English gloss (1–5 words) for that word as used in context. Reply with just the gloss — nothing else.",
-          messages: [
-            {
-              role: "user",
-              content: `Sentence: "${sentence}"\nWord: "${word}"`,
-            },
-          ],
-        }),
+      const res = await apiChat({
+        kind: "word",
+        messages: [
+          {
+            role: "user",
+            content: `Sentence: "${sentence}"\nWord: "${word}"`,
+          },
+        ],
       });
       if (!res.ok) throw new Error();
       const { text } = await res.json();
@@ -1172,20 +1125,14 @@ In all Spanish text you write, always use correct Spanish orthography: opening �
       .map((m) => `${m.role === "user" ? "Learner" : "Partner"}: ${m.text}`)
       .join("\n");
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "hint",
-          system:
-            'You help a beginner Spanish learner keep a conversation going. Given the conversation so far, suggest ONE short, natural Spanish phrase the learner could say next, with its English meaning. Keep it simple and beginner-appropriate. Return ONLY valid JSON: {"spanish":"...","english":"..."}',
-          messages: [
-            {
-              role: "user",
-              content: `Conversation so far:\n${convo}\n\nSuggest one short reply for the Learner:`,
-            },
-          ],
-        }),
+      const res = await apiChat({
+        kind: "hint",
+        messages: [
+          {
+            role: "user",
+            content: `Conversation so far:\n${convo}\n\nSuggest one short reply for the Learner:`,
+          },
+        ],
       });
       if (!res.ok) throw new Error();
       const { text } = await res.json();
