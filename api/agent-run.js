@@ -9,7 +9,7 @@
 // when the env var is named CRON_SECRET. Manual runs must send the same header.
 //
 // Manual testing (replace $CRON_SECRET and the domain):
-//   curl -X POST https://speak-first.vercel.app/api/agent-run \
+//   curl -X POST https://speak-first.org/api/agent-run \
 //     -H "Authorization: Bearer $CRON_SECRET" \
 //     -H "Content-Type: application/json" \
 //     -d '{"force":"research"}'
@@ -17,7 +17,7 @@
 //   curl -X POST … -d '{"force":"daily_email"}'
 //   curl -X POST … -d '{"force":"weekly_email"}'
 //   # No body / GET = the normal day-based routing:
-//   curl https://speak-first.vercel.app/api/agent-run -H "Authorization: Bearer $CRON_SECRET"
+//   curl https://speak-first.org/api/agent-run -H "Authorization: Bearer $CRON_SECRET"
 //
 // Required env vars (Vercel, server-side only, never in the client bundle):
 //   ANTHROPIC_API_KEY, CRON_SECRET, RESEND_API_KEY, AGENT_RECIPIENT_EMAIL,

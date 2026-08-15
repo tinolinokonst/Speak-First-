@@ -23,9 +23,15 @@ import { timingSafeEqual } from "node:crypto";
 // without a wildcard.
 const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
+// Canonical production origin(s), kept in code as well as env so the API keeps
+// working even if Vercel's system env vars aren't exposed to functions — if that
+// happened with only env-derived origins, every request would 403.
+// Extra domains (e.g. a www. host) go in the ALLOWED_ORIGINS env var.
+const SITE_ORIGINS = ["https://speak-first.org"];
+
 function allowedOrigins() {
   const fromEnv = [
-    process.env.VERCEL_PROJECT_PRODUCTION_URL, // e.g. speak-first.vercel.app
+    process.env.VERCEL_PROJECT_PRODUCTION_URL, // shortest production custom domain
     process.env.VERCEL_URL,                    // this exact deployment
     process.env.VERCEL_BRANCH_URL,             // branch alias for previews
   ]
@@ -37,7 +43,7 @@ function allowedOrigins() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  return [...fromEnv, ...extra];
+  return [...SITE_ORIGINS, ...fromEnv, ...extra];
 }
 
 export function checkOrigin(req) {
