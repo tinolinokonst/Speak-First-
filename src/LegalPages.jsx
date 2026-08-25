@@ -138,7 +138,7 @@ export function PrivacyPage() {
       <H2>Changes</H2>
       <P>
         If this policy changes, we'll update this page and the date above. Questions:
-        tino.rosenkrantz@gmail.com.
+        tinolind066@gmail.com.
       </P>
     </LegalShell>
   );

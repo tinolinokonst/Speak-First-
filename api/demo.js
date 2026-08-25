@@ -64,7 +64,10 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
+        // Prefers a demo-only key so public traffic can be attributed and
+        // revoked independently of the paid app. Falls back to the shared key,
+        // so this works unchanged until ANTHROPIC_DEMO_KEY is set in Vercel.
+        "x-api-key": process.env.ANTHROPIC_DEMO_KEY || process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({

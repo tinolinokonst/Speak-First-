@@ -37,11 +37,15 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Sign in to continue" });
   }
 
-  const { success } = await rateLimit(req, "chat", 20, "1 m", {
-    key: user.id,
-    failClosed: true,
-  });
-  if (!success) {
+  // Two ceilings, checked in parallel so this adds no latency:
+  //   per user — the meaningful limit for a legitimate session;
+  //   per IP   — stops one machine farming N accounts to multiply its quota.
+  // Without the IP ceiling, allowance scaled linearly with account count.
+  const [perUser, perIp] = await Promise.all([
+    rateLimit(req, "chat", 20, "1 m", { key: user.id, failClosed: true }),
+    rateLimit(req, "chat-ip", 60, "1 m", { failClosed: true }),
+  ]);
+  if (!perUser.success || !perIp.success) {
     return res.status(429).json({ error: "Too many requests — slow down a little." });
   }
 
