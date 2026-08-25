@@ -66,6 +66,59 @@ export function clientIp(req) {
 // ── 2. Rate limiting ─────────────────────────────────────────────────────────
 const limiters = {};
 
+// ── Mode signalling ──────────────────────────────────────────────────────────
+// Upstash returns { success, limit, remaining, reset }; the in-process fallback
+// below returns only { success }. That difference is the discriminator used to
+// report which backend actually served a check — so "Upstash is configured" is
+// never mistaken for "Upstash is working".
+//
+// Emitted once per bucket on first use and again on every mode CHANGE, so an
+// Upstash outage shows up in the logs without spamming one line per request.
+// Never logs the URL or token; error text is redacted before it is printed.
+const UPSTASH_CONFIGURED = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+const lastMode = new Map();
+
+// Cold-start signal. Presence booleans only — no values.
+console.log(
+  `[rate-limit] init upstashConfigured=${UPSTASH_CONFIGURED} ` +
+    `(url=${process.env.UPSTASH_REDIS_REST_URL ? "set" : "MISSING"}, ` +
+    `token=${process.env.UPSTASH_REDIS_REST_TOKEN ? "set" : "MISSING"})`
+);
+
+/** Strips URLs and long token-like strings out of text before logging.
+ *  The Upstash SDK echoes the configured URL in its "invalid URL" error. */
+function redact(input) {
+  return String(input?.message ?? input ?? "")
+    .replace(/https?:\/\/\S+/gi, "[url-redacted]")
+    .replace(/\b[A-Za-z0-9_-]{24,}\b/g, "[redacted]")
+    .slice(0, 200);
+}
+
+function signalMode(name, mode, reason) {
+  if (lastMode.get(name) === mode) return; // only first use + changes
+  lastMode.set(name, mode);
+  const tail = reason ? ` reason=${reason}` : "";
+  if (mode === "redis") {
+    console.log(`[rate-limit] bucket=${name} mode=redis backend=upstash durable=true${tail}`);
+  } else if (mode === "memory") {
+    console.warn(
+      `[rate-limit] bucket=${name} mode=memory durable=false (per-instance counters only)${tail}`
+    );
+  } else {
+    console.warn(`[rate-limit] bucket=${name} mode=disabled durable=false (no limiting)${tail}`);
+  }
+}
+
+/** Snapshot of limiter state for diagnostics/tests. Contains no secrets. */
+export function rateLimiterStatus() {
+  return {
+    upstashConfigured: UPSTASH_CONFIGURED,
+    buckets: Object.fromEntries(lastMode),
+  };
+}
+
 // Per-instance fallback. Serverless instances are ephemeral so this is weaker
 // than Redis, but it turns "completely unlimited" into "bounded per instance"
 // when Upstash is unset or erroring — which matters for endpoints that spend
@@ -115,14 +168,10 @@ export async function rateLimit(req, name, limit, window, opts = {}) {
     !process.env.UPSTASH_REDIS_REST_TOKEN
   ) {
     if (opts.failClosed) {
-      console.warn(
-        `[rate-limit:${name}] Upstash not configured — using in-process limiter. Set UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN for durable limits.`
-      );
+      signalMode(name, "memory", "upstash-not-configured");
       return memoryLimit(bucketKey, limit, window);
     }
-    console.warn(
-      `[rate-limit:${name}] Upstash not configured — allowing request (non-billable endpoint).`
-    );
+    signalMode(name, "disabled", "upstash-not-configured");
     return { success: true };
   }
 
@@ -134,9 +183,15 @@ export async function rateLimit(req, name, limit, window, opts = {}) {
         prefix: `rl:${name}`,
       });
     }
-    return await limiters[name].limit(key);
+    const res = await limiters[name].limit(key);
+    // Upstash returns limit/remaining/reset; the memory fallback never does.
+    // Checking the response rather than just the env vars means a silently
+    // broken Upstash can't masquerade as a working one.
+    signalMode(name, typeof res?.limit === "number" ? "redis" : "memory");
+    return res;
   } catch (e) {
-    console.warn(`[rate-limit:${name}] check failed:`, e?.message || e);
+    signalMode(name, opts.failClosed ? "memory" : "disabled", "upstash-error");
+    console.warn(`[rate-limit] bucket=${name} upstash check failed: ${redact(e)}`);
     // Degrade to the in-process limiter rather than dropping all limits.
     return opts.failClosed
       ? memoryLimit(bucketKey, limit, window)
