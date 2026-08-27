@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "./supabase.js";
+import { POLICY_VERSION, markConsentPending } from "./consent.js";
 import { ChevronRight, Mail } from "lucide-react";
 
 // Design tokens — kept in sync with App.jsx manually (no shared module needed yet).
@@ -38,7 +39,17 @@ export default function AuthScreen({ onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [checkEmail, setCheckEmail] = useState(false); // post-signup confirmation state
-  const [shakeField, setShakeField] = useState(null); // "email" | "password" — one subtle shake on invalid submit
+  const [shakeField, setShakeField] = useState(null); // "email" | "password" | "consent"
+
+  // ── Signup consent + age gate ──────────────────────────────────────────────
+  // Both start UNCHECKED and must be ticked deliberately. They gate the email
+  // form AND the Google button — an account cannot be created either way
+  // without them. Only required for signup; logging in is unaffected.
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedAge, setAgreedAge] = useState(false);
+  const isSignup = mode === "signup";
+  const consentGiven = agreedTerms && agreedAge;
+  const consentMissing = isSignup && !consentGiven;
 
   // Guess which field the error is about so only that one shakes.
   function shakeFor(message) {
@@ -48,13 +59,41 @@ export default function AuthScreen({ onSuccess }) {
     setTimeout(() => setShakeField(null), 300); // clear after the 250ms animation
   }
 
+  function blockForConsent() {
+    setError(
+      !agreedTerms && !agreedAge
+        ? "Please confirm you're 18 or older and agree to the Terms and Privacy Policy."
+        : !agreedTerms
+        ? "Please agree to the Terms of Service and Privacy Policy to continue."
+        : "Please confirm you're 18 or older to continue."
+    );
+    setShakeField("consent");
+    setTimeout(() => setShakeField(null), 300);
+  }
+
   async function handleEmailSubmit(e) {
     e.preventDefault();
+    // Hard gate: no account is created until both boxes are ticked.
+    if (consentMissing) return blockForConsent();
     setError(null);
     setLoading(true);
     try {
       if (mode === "signup") {
-        const { data, error: err } = await supabase.auth.signUp({ email, password });
+        // Consent is stamped onto the user record at creation time so it
+        // survives email confirmation in another tab or device, and the
+        // session marker covers recording it when the session appears.
+        markConsentPending();
+        const { data, error: err } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              consent_policy_version: POLICY_VERSION,
+              consented_at: new Date().toISOString(),
+              age_confirmed_18: true,
+            },
+          },
+        });
         if (err) throw err;
         // If Supabase returns a session immediately, email confirmation is disabled
         // and onAuthStateChange SIGNED_IN will navigate us into the app automatically.
@@ -75,7 +114,12 @@ export default function AuthScreen({ onSuccess }) {
   }
 
   async function handleGoogle() {
+    // Same gate before the OAuth flow starts, so signup can't be completed
+    // through Google without consent either. The button is also disabled.
+    if (consentMissing) return blockForConsent();
     setError(null);
+    // Survives the redirect to Google and back; App.jsx records it on SIGNED_IN.
+    if (isSignup) markConsentPending();
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -116,11 +160,66 @@ export default function AuthScreen({ onSuccess }) {
           : "Sign up free to start speaking."}
       </p>
 
-      {/* Google OAuth */}
-      <button onClick={handleGoogle} style={googleBtnStyle}>
+      {/* ── Consent + age gate (signup only) ──────────────────────────────
+          Placed above BOTH signup methods: nothing below can create an
+          account until these are ticked. Unchecked by default, never
+          pre-filled. Policy links open in a new tab so reading them
+          doesn't discard anything already typed. */}
+      {isSignup && (
+        <div
+          className={shakeField === "consent" ? "sf-shake" : ""}
+          style={consentBoxStyle}
+        >
+          <label style={consentRowStyle}>
+            <input
+              type="checkbox"
+              checked={agreedTerms}
+              onChange={(e) => { setAgreedTerms(e.target.checked); setError(null); }}
+              style={checkboxStyle}
+            />
+            <span>
+              I agree to the{" "}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={consentLinkStyle}>
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={consentLinkStyle}>
+                Privacy Policy
+              </a>.
+            </span>
+          </label>
+
+          <label style={{ ...consentRowStyle, marginBottom: 0 }}>
+            <input
+              type="checkbox"
+              checked={agreedAge}
+              onChange={(e) => { setAgreedAge(e.target.checked); setError(null); }}
+              style={checkboxStyle}
+            />
+            <span>I confirm I am 18 years of age or older.</span>
+          </label>
+        </div>
+      )}
+
+      {/* Google OAuth — disabled until consent is given on the signup tab */}
+      <button
+        onClick={handleGoogle}
+        disabled={consentMissing}
+        aria-describedby={consentMissing ? "sf-consent-hint" : undefined}
+        style={{
+          ...googleBtnStyle,
+          opacity: consentMissing ? 0.5 : 1,
+          cursor: consentMissing ? "not-allowed" : "pointer",
+        }}
+      >
         <GoogleIcon />
         Continue with Google
       </button>
+      {consentMissing && (
+        <p id="sf-consent-hint" style={consentHintStyle}>
+          Tick both boxes above to create your account.
+        </p>
+      )}
 
       {/* Divider */}
       <div style={dividerStyle}>
@@ -160,9 +259,14 @@ export default function AuthScreen({ onSuccess }) {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || consentMissing}
           className={loading ? "sf-btn-loading" : ""}
-          style={{ ...primaryBtnStyle, position: "relative" }}
+          style={{
+            ...primaryBtnStyle,
+            position: "relative",
+            opacity: consentMissing ? 0.5 : 1,
+            cursor: consentMissing ? "not-allowed" : "pointer",
+          }}
         >
           <span className="sf-btn-label">
             <Mail size={16} />
@@ -176,7 +280,14 @@ export default function AuthScreen({ onSuccess }) {
       <p style={{ marginTop: 20, textAlign: "center", fontSize: 14, color: T.textSub }}>
         {mode === "login" ? "Don't have an account? " : "Already have an account? "}
         <button
-          onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(null); }}
+          onClick={() => {
+            setMode(mode === "login" ? "signup" : "login");
+            setError(null);
+            // Consent must be a deliberate act for the signup actually being
+            // made, so switching tabs never carries a stale tick forward.
+            setAgreedTerms(false);
+            setAgreedAge(false);
+          }}
           style={linkBtnStyle}
         >
           {mode === "login" ? "Sign up" : "Log in"}
@@ -302,6 +413,47 @@ const errorStyle = {
   borderRadius: 10,
   padding: "10px 14px",
   lineHeight: 1.45,
+};
+
+// ── Consent gate styles ──────────────────────────────────────────────────────
+const consentBoxStyle = {
+  background: T.bg,
+  border: `1px solid ${T.border}`,
+  borderRadius: T.card,
+  padding: "14px 16px",
+  marginBottom: 16,
+};
+
+const consentRowStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  fontSize: 13.5,
+  lineHeight: 1.5,
+  color: T.text,
+  cursor: "pointer",
+  marginBottom: 10,
+};
+
+const checkboxStyle = {
+  width: 17,
+  height: 17,
+  marginTop: 1,
+  flexShrink: 0,
+  accentColor: T.accent, // coral tick, matching the brand
+  cursor: "pointer",
+};
+
+const consentLinkStyle = {
+  color: T.accent,
+  textDecorationColor: "rgba(232,101,78,.4)",
+};
+
+const consentHintStyle = {
+  fontSize: 12.5,
+  color: T.textSub,
+  textAlign: "center",
+  margin: "8px 0 0",
 };
 
 const linkBtnStyle = {

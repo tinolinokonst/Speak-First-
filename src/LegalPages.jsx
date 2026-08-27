@@ -52,7 +52,7 @@ export function PrivacyPage() {
       <H2>Who we are</H2>
       <P>
         Speak First is operated by Konstantin Lind as an individual, who acts as the data
-        controller for the personal data described here. Contact: tinolind066@gmail.com.
+        controller for the personal data described here. Contact: tino.rosenkrantz@gmail.com.
       </P>
 
       <H2>What we store</H2>
@@ -115,7 +115,7 @@ export function PrivacyPage() {
       <P>
         You can access, correct, or delete your data. Account deletion is self-serve in your
         account settings and takes effect immediately. For a copy of your data, or any other
-        request, email tinolind066@gmail.com. You also have the right to lodge a complaint with a data
+        request, email tino.rosenkrantz@gmail.com. You also have the right to lodge a complaint with a data
         protection supervisory authority.
       </P>
 
@@ -142,7 +142,7 @@ export function PrivacyPage() {
       <H2>Changes</H2>
       <P>
         If this policy changes, we'll update this page and the date above. Questions:
-        tinolind066@gmail.com.
+        tino.rosenkrantz@gmail.com.
       </P>
     </LegalShell>
   );
@@ -188,8 +188,15 @@ export function CookiesPage() {
         </LI>
       </UL>
       <P>
-        If you never create an account, nothing is stored in your browser at all. You can
-        browse this site, and try the Sofía demo, without leaving a trace.
+        During sign-up only, we also keep a short-lived note in your browser's{" "}
+        <strong>session storage</strong> recording that you ticked the consent boxes. It
+        exists so your agreement isn't lost while you're redirected to Google and back.
+        It's deleted the moment it's read, and in any case disappears when you close the
+        tab.
+      </P>
+      <P>
+        Apart from those two, nothing is stored. If you never create an account, you can
+        browse this site and try the Sofía demo without leaving a trace.
       </P>
 
       <H2>What we don't do</H2>
@@ -226,7 +233,7 @@ export function CookiesPage() {
       </P>
 
       <H2>Questions</H2>
-      <P>Email tinolind066@gmail.com.</P>
+      <P>Email tino.rosenkrantz@gmail.com.</P>
     </LegalShell>
   );
 }
@@ -284,7 +291,7 @@ export function TermsPage() {
       </P>
 
       <H2>Contact</H2>
-      <P>Questions about these terms: tinolind066@gmail.com.</P>
+      <P>Questions about these terms: tino.rosenkrantz@gmail.com.</P>
     </LegalShell>
   );
 }

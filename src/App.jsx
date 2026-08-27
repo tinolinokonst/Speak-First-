@@ -29,6 +29,7 @@ import { PrivacyPage, TermsPage, CookiesPage } from "./LegalPages.jsx";
 import TextReplyInput from "./TextReplyInput.jsx";
 import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
 import { WARMUP_PHRASES } from "./warmupPhrases.js";
+import { recordConsent, takePendingConsent } from "./consent.js";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -904,6 +905,16 @@ export default function App() {
         setUser(session?.user ?? null);
         if (event === "SIGNED_IN") {
           setScreen(prev => (prev === "auth" || prev === "landing") ? "home" : prev);
+          // Record signup consent once the session exists. Two triggers, so
+          // both signup paths are covered: the tab-scoped marker (set before
+          // the Google redirect, and before email signup), and the version
+          // stamped into user_metadata at signUp — which survives email
+          // confirmation opened in a different tab or device.
+          // The write is idempotent and never blocks sign-in if it fails.
+          const pending = takePendingConsent();
+          const stamped = session?.user?.user_metadata?.consent_policy_version;
+          const version = pending || stamped;
+          if (version && session?.user?.id) recordConsent(session.user.id, version);
         }
       }
     );

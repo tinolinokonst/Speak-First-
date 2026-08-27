@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "./supabase.js";
-import { ArrowLeft, LogOut, Trash2, User, Lock, ShieldAlert } from "lucide-react";
+import { ArrowLeft, LogOut, Trash2, User, Lock, ShieldAlert, Download } from "lucide-react";
 
 // Design tokens — kept in sync with App.jsx.
 const T = {
@@ -168,6 +168,94 @@ function ChangePasswordSection({ user }) {
   );
 }
 
+// ── Data export section ───────────────────────────────────────────────────────
+// Everything here is fetched with the user's own session, so RLS guarantees it
+// can only ever return their own rows. Tables the client cannot read (the
+// waitlist has RLS on with no policies) are reported as unavailable rather than
+// silently omitted, so the export never implies data doesn't exist.
+function DataExportSection({ user }) {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null);
+
+  async function handleExport() {
+    setStatus(null);
+    setLoading(true);
+    try {
+      // Re-read the user from the server rather than trusting local state.
+      const { data: { user: fresh }, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !fresh) throw new Error("Your session has expired. Please sign in again.");
+
+      const [completionsRes, consentsRes] = await Promise.all([
+        supabase.from("completions").select("scenario_id, created_at").order("created_at"),
+        supabase.from("user_consents").select("policy_version, consented_at").order("consented_at"),
+      ]);
+
+      const meta = fresh.user_metadata || {};
+      const payload = {
+        export_generated_at: new Date().toISOString(),
+        note:
+          "Everything Speak First holds about you. Conversation transcripts, audio " +
+          "and coaching feedback are never stored, so they cannot appear here.",
+        account: {
+          user_id: fresh.id,
+          email: fresh.email,
+          display_name: meta.full_name || meta.name || null,
+          account_created_at: fresh.created_at,
+          last_sign_in_at: fresh.last_sign_in_at ?? null,
+          sign_in_providers: fresh.app_metadata?.providers ?? [],
+        },
+        progress: {
+          completed_scenarios: completionsRes.error
+            ? { unavailable: completionsRes.error.message }
+            : completionsRes.data,
+        },
+        consents: consentsRes.error
+          ? { unavailable: consentsRes.error.message }
+          : consentsRes.data,
+        not_included: [
+          "Conversation transcripts and audio — never stored by Speak First.",
+          "Coaching feedback — generated per session and never saved.",
+          "Waitlist signups — not readable with your account session; email us for a copy.",
+        ],
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "speak-first-my-data.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Revoke on the next tick so the download has started.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      setStatus({ type: "success", msg: "Download started — check your downloads folder." });
+    } catch (err) {
+      setStatus({
+        type: "error",
+        msg: err.message || "Couldn't build your export. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 14, color: T.textSub, lineHeight: 1.6, margin: "0 0 14px" }}>
+        Download everything we hold about you as a JSON file: your account details,
+        scenario progress, and consent records.
+      </p>
+      <button onClick={handleExport} disabled={loading} style={{ ...secondaryBtnStyle, opacity: loading ? 0.6 : 1 }}>
+        <Download size={15} />
+        {loading ? "Preparing…" : "Download my data"}
+      </button>
+      {status && <Banner type={status.type}>{status.msg}</Banner>}
+    </div>
+  );
+}
+
 // ── Delete account section ────────────────────────────────────────────────────
 function DeleteAccountSection({ user, onDeleted }) {
   const [confirmText, setConfirmText] = useState("");
@@ -306,7 +394,12 @@ export default function SettingsPage({ user, onBack, onSignOut, onDeleted }) {
         </button>
       </Section>
 
-      {/* ── 4. Delete account */}
+      {/* ── 4. Your data */}
+      <Section icon={<Download size={15} />} title="Your data">
+        <DataExportSection user={user} />
+      </Section>
+
+      {/* ── 5. Delete account */}
       <Section icon={<ShieldAlert size={15} />} title="Delete account">
         <DeleteAccountSection user={user} onDeleted={onDeleted} />
       </Section>
