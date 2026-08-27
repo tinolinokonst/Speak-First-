@@ -25,7 +25,7 @@ import SettingsPage from "./SettingsPage.jsx";
 import WhyPage from "./WhyPage.jsx";
 import Reveal from "./Reveal.jsx";
 import DemoPanel from "./DemoPanel.jsx";
-import { PrivacyPage, TermsPage } from "./LegalPages.jsx";
+import { PrivacyPage, TermsPage, CookiesPage } from "./LegalPages.jsx";
 import TextReplyInput from "./TextReplyInput.jsx";
 import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
 import { WARMUP_PHRASES } from "./warmupPhrases.js";
@@ -223,6 +223,9 @@ function Footer() {
         </a>
         <a className="sf-nav-link" href="/terms" style={{ color: T.textSub, textDecoration: "none" }}>
           Terms
+        </a>
+        <a className="sf-nav-link" href="/cookies" style={{ color: T.textSub, textDecoration: "none" }}>
+          Cookies
         </a>
       </span>
     </footer>
@@ -736,6 +739,7 @@ const SCREEN_PATHS = {
   why:     "/why",
   privacy: "/privacy",
   terms:   "/terms",
+  cookies: "/cookies",
 };
 const PATH_SCREENS = Object.fromEntries(
   Object.entries(SCREEN_PATHS).map(([screen, path]) => [path, screen])
@@ -770,6 +774,11 @@ const PAGE_META = {
     title: "Terms of Service — Speak First",
     description:
       "The terms for using Speak First: a free beta AI conversation practice tool for adults aged 18 and over.",
+  },
+  cookies: {
+    title: "Cookie Notice — Speak First",
+    description:
+      "Speak First uses no cookies, no analytics and no trackers. The only thing stored in your browser is your sign-in session, and only after you log in.",
   },
 };
 
@@ -2473,6 +2482,7 @@ export default function App() {
         {/* ── LEGAL PAGES (URL-routed) ──────────── */}
         {screen === "privacy" && <PrivacyPage />}
         {screen === "terms" && <TermsPage />}
+        {screen === "cookies" && <CookiesPage />}
 
         {/* Site-wide footer — omitted on the chat screen (fixed 100vh layout) */}
         {screen !== "chat" && <Footer />}

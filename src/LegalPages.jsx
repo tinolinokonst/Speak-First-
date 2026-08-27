@@ -14,7 +14,7 @@ const T = {
 };
 const OL = { fontSize: 11, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" };
 
-function LegalShell({ title, children }) {
+function LegalShell({ title, updated = "July 18, 2026", children }) {
   return (
     <div className="sf-screen" style={{ paddingTop: 64, paddingBottom: 24 }}>
       {/* Top nav — plain anchors: these pages are entered by URL */}
@@ -28,7 +28,7 @@ function LegalShell({ title, children }) {
       <h1 style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.022em", lineHeight: 1.1, margin: "0 0 8px", color: T.text }}>
         {title}
       </h1>
-      <p style={{ fontSize: 13, color: T.textSub, margin: "0 0 36px" }}>Last updated: July 18, 2026</p>
+      <p style={{ fontSize: 13, color: T.textSub, margin: "0 0 36px" }}>Last updated: {updated}</p>
 
       <div style={{ maxWidth: "65ch", fontSize: 15, lineHeight: 1.7, color: T.text }}>{children}</div>
     </div>
@@ -75,6 +75,10 @@ export function PrivacyPage() {
           address, used to prevent abuse of our API. They expire automatically.
         </LI>
       </UL>
+      <P>
+        We set no cookies. For what is kept in your browser, see our{" "}
+        <a href="/cookies" style={{ color: T.accent }}>Cookie Notice</a>.
+      </P>
 
       <H2>What we never store</H2>
       <P>
@@ -140,6 +144,89 @@ export function PrivacyPage() {
         If this policy changes, we'll update this page and the date above. Questions:
         tinolind066@gmail.com.
       </P>
+    </LegalShell>
+  );
+}
+
+// ── Cookie Notice ─────────────────────────────────────────────────────────────
+// Grounded in what the code actually does, verified before writing:
+//   • no cookie is set anywhere (our code never touches document.cookie, and
+//     Supabase persists sessions in localStorage, not cookies);
+//   • no analytics, tag manager, pixel or third-party script exists;
+//   • the only browser storage is the Supabase sign-in session, written after
+//     login and strictly necessary to keep the user signed in.
+// If any of that changes, this page has to change with it.
+
+export function CookiesPage() {
+  return (
+    <LegalShell title="Cookie Notice" updated="August 16, 2026">
+      <H2>The short version</H2>
+      <P>
+        <strong>Speak First doesn't use cookies.</strong> Not for analytics, not for
+        advertising, not for anything. There is no tracking on this site and no
+        third-party scripts collecting data about you.
+      </P>
+
+      <H2>What we do store in your browser</H2>
+      <P>
+        One thing, and only after you sign in: your <strong>login session</strong>. It's
+        kept in your browser's local storage (not a cookie) by Supabase, the service
+        that handles our accounts.
+      </P>
+      <UL>
+        <LI>
+          <strong>What it is</strong> — a token proving you're signed in, so you don't
+          have to log in again on every visit.
+        </LI>
+        <LI>
+          <strong>Why it's there</strong> — it is strictly necessary. Without it, staying
+          signed in is impossible.
+        </LI>
+        <LI>
+          <strong>How long it lasts</strong> — until you sign out or clear your browser
+          storage.
+        </LI>
+      </UL>
+      <P>
+        If you never create an account, nothing is stored in your browser at all. You can
+        browse this site, and try the Sofía demo, without leaving a trace.
+      </P>
+
+      <H2>What we don't do</H2>
+      <UL>
+        <LI>No analytics — no Google Analytics, Plausible, or anything similar.</LI>
+        <LI>No advertising or marketing pixels.</LI>
+        <LI>No third-party trackers, embeds, or social widgets.</LI>
+        <LI>No cross-site or cross-device tracking, and no profiling.</LI>
+      </UL>
+
+      <H2>Your practice sessions</H2>
+      <P>
+        Conversations aren't stored either — in your browser or on our servers. A practice
+        session lives in the page while you're doing it and is gone when you close the tab.
+        See the <a href="/privacy" style={{ color: T.accent }}>Privacy Policy</a> for the
+        full picture of what we keep.
+      </P>
+
+      {/* LEGAL REVIEW NEEDED — the "no consent banner required" conclusion below
+          rests on the strictly-necessary exemption in the ePrivacy Directive
+          (Art. 5(3)). Confirm before relying on it. */}
+      <H2>Why there's no cookie banner</H2>
+      <P>
+        Consent banners exist for storage that isn't essential — analytics and advertising,
+        mostly. Since the only thing we store is the sign-in token you need in order to be
+        signed in, there's nothing to ask you to consent to. If that ever changes, we'll ask
+        first, and update this page.
+      </P>
+
+      <H2>Clearing it</H2>
+      <P>
+        Signing out removes the session. You can also clear site data for speak-first.org in
+        your browser settings at any time — it will simply sign you out.
+      </P>
+
+      <H2>Questions</H2>
+      <P>Email tinolind066@gmail.com.</P>
     </LegalShell>
   );
 }
