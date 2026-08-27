@@ -1,0 +1,24 @@
+# Speak First — https://speak-first.org
+
+User-agent: *
+Allow: /
+
+# In-app areas.
+# These are client-side screens rather than server routes, but vercel.json
+# rewrites every unmatched path to index.html, so requesting /chat returns 200
+# with landing-page content. Disallowing them keeps those near-duplicate URLs
+# out of the index and stops crawlers probing authenticated surfaces.
+Disallow: /auth
+Disallow: /home
+Disallow: /dashboard
+Disallow: /chat
+Disallow: /warmup
+Disallow: /warm-up
+Disallow: /feedback
+Disallow: /settings
+Disallow: /account
+
+# Serverless functions — nothing crawlable, and they cost money per call.
+Disallow: /api/
+
+Sitemap: https://speak-first.org/sitemap.xml

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Public marketing and legal pages only. Every URL listed here is a real route
+  that renders its own content (see the pathname map in src/App.jsx) — listing a
+  path the SPA does not route would serve landing-page content under a second
+  URL, which reads as duplicate content.
+
+  changefreq/priority are omitted deliberately: Google ignores both.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://speak-first.org/</loc>
+    <lastmod>2026-08-16</lastmod>
+  </url>
+  <url>
+    <loc>https://speak-first.org/why</loc>
+    <lastmod>2026-08-16</lastmod>
+  </url>
+  <url>
+    <loc>https://speak-first.org/privacy</loc>
+    <lastmod>2026-08-16</lastmod>
+  </url>
+  <url>
+    <loc>https://speak-first.org/terms</loc>
+    <lastmod>2026-08-16</lastmod>
+  </url>
+</urlset>

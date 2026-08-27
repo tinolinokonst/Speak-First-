@@ -725,6 +725,54 @@ function LandingPage({ user, isMobile, onStartPracticing, onWhy, onDashboard }) 
   );
 }
 
+// ── Public routes and per-page metadata ──────────────────────────────────────
+// Only these screens have real URLs. Everything else (auth, home, warmup, chat,
+// feedback, settings) is in-app state with no URL of its own, and is disallowed
+// in public/robots.txt. Any path listed here must also appear in
+// public/sitemap.xml — and nothing may be listed there that isn't routed here,
+// or it would serve landing-page content under a second URL.
+const SCREEN_PATHS = {
+  landing: "/",
+  why:     "/why",
+  privacy: "/privacy",
+  terms:   "/terms",
+};
+const PATH_SCREENS = Object.fromEntries(
+  Object.entries(SCREEN_PATHS).map(([screen, path]) => [path, screen])
+);
+
+function pathToScreen(pathname) {
+  // Tolerate a trailing slash: /why and /why/ are the same page.
+  const p = pathname !== "/" ? pathname.replace(/\/+$/, "") : "/";
+  return PATH_SCREENS[p] || "landing";
+}
+
+// Per-page <title> and meta description, so search results don't show the same
+// snippet for every page. Landing repeats the exact strings already in
+// index.html, leaving its markup effectively unchanged.
+const PAGE_META = {
+  landing: {
+    title: "Speak First — Learn Spanish by actually speaking",
+    description:
+      "Real spoken conversations with an AI partner that never interrupts you. Speak, make mistakes, then see the three things most worth fixing.",
+  },
+  why: {
+    title: "Why Speak First — speaking practice, not vocabulary drills",
+    description:
+      "Why we built a speaking-first Spanish app: no streaks, no daily targets, no lockouts. Real spoken conversations, with feedback at the end instead of mid-sentence.",
+  },
+  privacy: {
+    title: "Privacy Policy — Speak First",
+    description:
+      "What Speak First stores and what it never stores. Conversation transcripts, audio, and coaching feedback are never saved to our servers.",
+  },
+  terms: {
+    title: "Terms of Service — Speak First",
+    description:
+      "The terms for using Speak First: a free beta AI conversation practice tool for adults aged 18 and over.",
+  },
+};
+
 // ── Authenticated /api/chat helper ───────────────────────────────────────────
 // The server builds the system prompt from `kind` (+ `scenarioId`); the client
 // can no longer supply one. A valid Supabase access token is required, so the
@@ -745,10 +793,7 @@ async function apiChat(body) {
 export default function App() {
   // landing | auth | home | warmup | chat | feedback | settings | why | privacy | terms
   // /privacy and /terms are URL-routed (vercel.json rewrites them to index.html).
-  const [screen, setScreen] = useState(() => {
-    const p = window.location.pathname;
-    return p === "/privacy" ? "privacy" : p === "/terms" ? "terms" : "landing";
-  });
+  const [screen, setScreen] = useState(() => pathToScreen(window.location.pathname));
   const [scenario, setScenario] = useState(null);
   const [messages, setMessages] = useState([]); // {role:'tutor'|'user', text}
   const [listening, setListening] = useState(false);
@@ -799,6 +844,28 @@ export default function App() {
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // Back/forward across the public pages. navigateScreen pushes history
+  // entries, so without this the URL would change while the view didn't.
+  useEffect(() => {
+    const onPop = () => setScreen(pathToScreen(window.location.pathname));
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  // Per-page title/description/canonical. In-app screens are left alone —
+  // they're noindex by robots.txt and never appear in results.
+  useEffect(() => {
+    const meta = PAGE_META[screen];
+    if (!meta) return;
+    document.title = meta.title;
+    const desc = document.querySelector('meta[name="description"]');
+    if (desc) desc.setAttribute("content", meta.description);
+    const canonical = document.querySelector('link[rel="canonical"]');
+    if (canonical) {
+      canonical.setAttribute("href", `https://speak-first.org${SCREEN_PATHS[screen] ?? "/"}`);
+    }
+  }, [screen]);
 
   // ── Bootstrap auth session and listen for changes ───────────────────────
   useEffect(() => {
@@ -872,9 +939,19 @@ export default function App() {
   // flushSync makes React commit inside the transition callback so the API
   // can capture old/new frames. In-app navigation is untouched.
   function navigateScreen(next) {
+    // Keep the URL in step for public pages so they can be linked, shared and
+    // crawled. In-app screens have no public URL, so they reset the path to "/".
+    const path = SCREEN_PATHS[next] ?? "/";
+    if (window.location.pathname !== path) {
+      window.history.pushState({ screen: next }, "", path);
+    }
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (document.startViewTransition && !reduced) {
-      document.startViewTransition(() => flushSync(() => setScreen(next)));
+      const vt = document.startViewTransition(() => flushSync(() => setScreen(next)));
+      // Navigating away mid-animation aborts the transition and rejects these.
+      // Unhandled, it surfaces as an uncaught rejection that masks real errors.
+      vt?.ready?.catch(() => {});
+      vt?.finished?.catch(() => {});
     } else {
       setScreen(next);
     }
