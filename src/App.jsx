@@ -29,7 +29,13 @@ import { PrivacyPage, TermsPage, CookiesPage } from "./LegalPages.jsx";
 import TextReplyInput from "./TextReplyInput.jsx";
 import { speak, stopAllSpeech, createRecognizer } from "./speech.js";
 import { WARMUP_PHRASES } from "./warmupPhrases.js";
-import { recordConsent, takePendingConsent } from "./consent.js";
+import {
+  POLICY_VERSION,
+  recordConsent,
+  takePendingConsent,
+  hasConsentRecord,
+} from "./consent.js";
+import ConsentGate from "./ConsentGate.jsx";
 
 // ── Scenarios: the thing the learner actually does. Real situations, not drills.
 const SCENARIOS = [
@@ -825,6 +831,8 @@ export default function App() {
   // ── Auth state
   const [user, setUser] = useState(null);       // null = not yet known | false = logged out | object = logged in
   const [authReady, setAuthReady] = useState(false); // true once we've checked for an existing session
+  // "unknown" (logged out) | "checking" | "ok" | "required"
+  const [consentState, setConsentState] = useState("unknown");
 
   // ── In-context comprehension support (in-memory cache, reset per scenario)
   const [translations, setTranslations] = useState({});
@@ -905,21 +913,48 @@ export default function App() {
         setUser(session?.user ?? null);
         if (event === "SIGNED_IN") {
           setScreen(prev => (prev === "auth" || prev === "landing") ? "home" : prev);
-          // Record signup consent once the session exists. Two triggers, so
-          // both signup paths are covered: the tab-scoped marker (set before
-          // the Google redirect, and before email signup), and the version
-          // stamped into user_metadata at signUp — which survives email
-          // confirmation opened in a different tab or device.
-          // The write is idempotent and never blocks sign-in if it fails.
-          const pending = takePendingConsent();
-          const stamped = session?.user?.user_metadata?.consent_policy_version;
-          const version = pending || stamped;
-          if (version && session?.user?.id) recordConsent(session.user.id, version);
+          // Consent is recorded and verified by the effect below, which keys off
+          // `user` so it runs on session RESTORE too, not just on sign-in.
         }
       }
     );
     return () => subscription.unsubscribe();
   }, []);
+
+  // ── Consent verification ────────────────────────────────────────────────
+  // Runs whenever a user id appears — sign-in, OAuth return, AND session
+  // restore on refresh. That last case is what makes the gate unskippable:
+  // someone who authenticates via Google then abandons the consent step is
+  // routed straight back to it on reload rather than landing in the app.
+  //
+  // Order matters. Any consent captured during this signup (the tab-scoped
+  // marker, or the version stamped into user_metadata at signUp) is written
+  // BEFORE we check, so an email signup isn't asked to consent twice.
+  useEffect(() => {
+    const uid = user?.id ?? null;
+    if (!uid) {
+      setConsentState("unknown");
+      return;
+    }
+    let cancelled = false;
+    setConsentState("checking");
+
+    (async () => {
+      const pending = takePendingConsent();
+      const stamped = user?.user_metadata?.consent_policy_version;
+      const version = pending || stamped;
+      if (version) await recordConsent(uid, version);
+
+      const { consented } = await hasConsentRecord(uid, POLICY_VERSION);
+      if (cancelled) return;
+      // consented === null means the check itself failed (table missing,
+      // network down). hasConsentRecord already logged it loudly; allow access
+      // rather than making a broken table look like a total outage.
+      setConsentState(consented === false ? "required" : "ok");
+    })();
+
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   // ── Completions ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1253,6 +1288,32 @@ export default function App() {
 
   // Don't flash any content while we check for an existing session.
   if (!authReady) return null;
+
+  // ── Post-authentication consent gate ──────────────────────────────────────
+  // An authenticated user with no consent record for the current policy version
+  // cannot reach any app screen. This is enforced here rather than on the
+  // buttons because OAuth authenticates the user before they are back in the
+  // app: Supabase creates the account during signInWithOAuth, so a new user who
+  // clicked "Continue with Google" from the LOG IN tab previously arrived fully
+  // signed in having agreed to nothing.
+  //
+  // The legal pages stay reachable, otherwise opening Terms from the gate in a
+  // new tab would just render the gate again and there would be no way to read
+  // what you're agreeing to.
+  const LEGAL_SCREENS = ["privacy", "terms", "cookies"];
+  if (user && consentState === "required" && !LEGAL_SCREENS.includes(screen)) {
+    return (
+      <div style={{ minHeight: "100vh", background: T.bg, color: T.text, fontFamily: T.sans }}>
+        <ConsentGate
+          user={user}
+          onConsented={() => { setConsentState("ok"); setScreen("home"); }}
+          onCancelled={() => { setConsentState("unknown"); setScreen("landing"); }}
+        />
+      </div>
+    );
+  }
+  // Hold the render while verifying, so the app never flashes before the gate.
+  if (user && consentState === "checking" && !LEGAL_SCREENS.includes(screen)) return null;
 
   // Auth screen replaces everything else (full-page, outside the main column).
   if (screen === "auth") {

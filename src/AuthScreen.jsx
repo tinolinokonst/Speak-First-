@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { supabase } from "./supabase.js";
 import { POLICY_VERSION, markConsentPending } from "./consent.js";
+import ConsentChecks, { consentMessage } from "./ConsentChecks.jsx";
 import { ChevronRight, Mail } from "lucide-react";
 
 // Design tokens — kept in sync with App.jsx manually (no shared module needed yet).
@@ -60,13 +61,7 @@ export default function AuthScreen({ onSuccess }) {
   }
 
   function blockForConsent() {
-    setError(
-      !agreedTerms && !agreedAge
-        ? "Please confirm you're 18 or older and agree to the Terms and Privacy Policy."
-        : !agreedTerms
-        ? "Please agree to the Terms of Service and Privacy Policy to continue."
-        : "Please confirm you're 18 or older to continue."
-    );
+    setError(consentMessage(agreedTerms, agreedAge));
     setShakeField("consent");
     setTimeout(() => setShakeField(null), 300);
   }
@@ -166,39 +161,14 @@ export default function AuthScreen({ onSuccess }) {
           pre-filled. Policy links open in a new tab so reading them
           doesn't discard anything already typed. */}
       {isSignup && (
-        <div
-          className={shakeField === "consent" ? "sf-shake" : ""}
-          style={consentBoxStyle}
-        >
-          <label style={consentRowStyle}>
-            <input
-              type="checkbox"
-              checked={agreedTerms}
-              onChange={(e) => { setAgreedTerms(e.target.checked); setError(null); }}
-              style={checkboxStyle}
-            />
-            <span>
-              I agree to the{" "}
-              <a href="/terms" target="_blank" rel="noopener noreferrer" style={consentLinkStyle}>
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={consentLinkStyle}>
-                Privacy Policy
-              </a>.
-            </span>
-          </label>
-
-          <label style={{ ...consentRowStyle, marginBottom: 0 }}>
-            <input
-              type="checkbox"
-              checked={agreedAge}
-              onChange={(e) => { setAgreedAge(e.target.checked); setError(null); }}
-              style={checkboxStyle}
-            />
-            <span>I confirm I am 18 years of age or older.</span>
-          </label>
-        </div>
+        <ConsentChecks
+          agreedTerms={agreedTerms}
+          setAgreedTerms={setAgreedTerms}
+          agreedAge={agreedAge}
+          setAgreedAge={setAgreedAge}
+          onChange={() => setError(null)}
+          shake={shakeField === "consent"}
+        />
       )}
 
       {/* Google OAuth — disabled until consent is given on the signup tab */}
@@ -416,38 +386,9 @@ const errorStyle = {
 };
 
 // ── Consent gate styles ──────────────────────────────────────────────────────
-const consentBoxStyle = {
-  background: T.bg,
-  border: `1px solid ${T.border}`,
-  borderRadius: T.card,
-  padding: "14px 16px",
-  marginBottom: 16,
-};
 
-const consentRowStyle = {
-  display: "flex",
-  alignItems: "flex-start",
-  gap: 10,
-  fontSize: 13.5,
-  lineHeight: 1.5,
-  color: T.text,
-  cursor: "pointer",
-  marginBottom: 10,
-};
 
-const checkboxStyle = {
-  width: 17,
-  height: 17,
-  marginTop: 1,
-  flexShrink: 0,
-  accentColor: T.accent, // coral tick, matching the brand
-  cursor: "pointer",
-};
 
-const consentLinkStyle = {
-  color: T.accent,
-  textDecorationColor: "rgba(232,101,78,.4)",
-};
 
 const consentHintStyle = {
   fontSize: 12.5,

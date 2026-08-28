@@ -32,6 +32,42 @@ export function takePendingConsent() {
   }
 }
 
+// ── Verification ─────────────────────────────────────────────────────────────
+/**
+ * Does this user have a consent record for the given policy version?
+ *
+ * Returns { consented: true | false | null }. `null` means we could not tell —
+ * the query itself failed (table missing, network down, RLS misconfigured).
+ *
+ * Callers MUST treat null differently from false. Blocking the whole app on an
+ * infrastructure error would make a missing table look like a total outage for
+ * every user; a genuine "query worked, no row" is the only safe reason to gate
+ * someone. The unknown case is logged loudly instead.
+ */
+export async function hasConsentRecord(userId, version = POLICY_VERSION) {
+  if (!userId) return { consented: null, reason: "no-user" };
+  try {
+    const { data, error } = await supabase
+      .from("user_consents")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("policy_version", version)
+      .limit(1);
+    if (error) {
+      console.error(
+        "[consent] cannot verify consent — allowing access so a broken table " +
+          "doesn't lock everyone out. Run supabase/migrations/user_consents_table.sql. " +
+          `(${error.code}: ${error.message})`
+      );
+      return { consented: null, reason: error.code };
+    }
+    return { consented: (data?.length ?? 0) > 0 };
+  } catch (e) {
+    console.error("[consent] cannot verify consent:", e?.message || e);
+    return { consented: null, reason: "exception" };
+  }
+}
+
 // ── Recording ────────────────────────────────────────────────────────────────
 /**
  * Writes the consent row for a freshly signed-up user.
